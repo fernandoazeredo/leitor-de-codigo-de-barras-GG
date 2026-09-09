@@ -24,7 +24,14 @@ type Perfil = {
   perfil: 'ADMINISTRADOR' | 'OPERADOR';
 };
 
-const OWNER_EMAIL = 'fernandoazeredo64@gmail.com';
+const ADMIN_EMAILS = new Set([
+  'fernandoazeredo64@gmail.com',
+  'cassyomattos@gmail.com'
+]);
+
+function emailAdministrador(email?: string | null) {
+  return !!email && ADMIN_EMAILS.has(email.toLowerCase());
+}
 
 function mensagemErro(codigo?: string) {
   switch (codigo) {
@@ -47,17 +54,45 @@ function mensagemErro(codigo?: string) {
 async function carregarPerfil(u: User): Promise<Perfil | null> {
   const ref = doc(db, 'usuarios', u.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data() as Perfil;
 
-  if (u.email?.toLowerCase() === OWNER_EMAIL && u.emailVerified) {
-    const novo: Perfil = {
-      nome: u.displayName || 'Fernando Azeredo',
-      email: u.email,
+  if (snap.exists()) {
+    const atual = snap.data() as Perfil;
+
+    if (emailAdministrador(u.email) && u.emailVerified && atual.perfil !== 'ADMINISTRADOR') {
+      const promovido: Perfil = {
+        ...atual,
+        nome: atual.nome || u.displayName || undefined,
+        email: u.email || atual.email,
+        ativo: true,
+        perfil: 'ADMINISTRADOR'
+      };
+      await setDoc(ref, promovido);
+      return promovido;
+    }
+
+    return atual;
+  }
+
+  if (emailAdministrador(u.email) && u.emailVerified) {
+    const novoAdmin: Perfil = {
+      nome: u.displayName || (u.email?.toLowerCase() === 'fernandoazeredo64@gmail.com' ? 'Fernando Azeredo' : 'Cassyo Mattos'),
+      email: u.email || undefined,
       ativo: true,
       perfil: 'ADMINISTRADOR'
     };
-    await setDoc(ref, novo);
-    return novo;
+    await setDoc(ref, novoAdmin);
+    return novoAdmin;
+  }
+
+  if (u.email) {
+    const novoOperador: Perfil = {
+      nome: u.displayName || u.email.split('@')[0],
+      email: u.email,
+      ativo: true,
+      perfil: 'OPERADOR'
+    };
+    await setDoc(ref, novoOperador);
+    return novoOperador;
   }
 
   return null;
@@ -268,8 +303,8 @@ export default function AuthGate() {
       <div className="auth-card">
         <BrandMark />
         <h1>Acesso não autorizado</h1>
-        <p>Você entrou como <b>{user.email}</b>, mas este usuário ainda não está autorizado para usar o aplicativo.</p>
-        <p className="muted">Entre com uma conta já cadastrada ou solicite liberação ao administrador.</p>
+        <p>Você entrou como <b>{user.email}</b>, mas não foi possível criar ou validar seu perfil.</p>
+        <p className="muted">Saia e tente novamente. Se o problema continuar, procure um administrador.</p>
         {erro && <p className="auth-error">{erro}</p>}
         <button className="wide" onClick={sair}>Sair</button>
       </div>
