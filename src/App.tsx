@@ -48,6 +48,7 @@ export default function App() {
   const [corrs,setCorrs]=useState<Correspondencia[]>([]);
   const [historico,setHistorico]=useState<HistoricoComparacao[]>([]);
   const [busca,setBusca]=useState('');
+  const [produtoBusca,setProdutoBusca]=useState('');
   const [scanning,setScanning]=useState(false);
   const [planilhasOpen,setPlanilhasOpen]=useState(false);
   const [resultado,setResultado]=useState<ResultadoBusca|null>(null);
@@ -167,6 +168,23 @@ export default function App() {
     ].join(' ')).includes(q)).slice(0,20);
   },[busca,corrs]);
 
+  const resultadosNome = useMemo(()=>{
+    const q=normalizar(produtoBusca);
+    if(!q) return [];
+
+    const gg=produtosGG
+      .filter(x=>normalizar(x.produto).includes(q))
+      .map(x=>({key:`gg-${x.id}`,tipo:'GG' as const,produto:x.produto,gg:x}));
+
+    const fab=fabricantes
+      .filter(x=>normalizar(x.produto).includes(q))
+      .map(x=>({key:`fab-${x.id}`,tipo:'FAB' as const,produto:x.produto,fab:x}));
+
+    return [...gg,...fab]
+      .sort((a,b)=>a.produto.localeCompare(b.produto,'pt-BR'))
+      .slice(0,30);
+  },[produtoBusca,produtosGG,fabricantes]);
+
   const extratoFiltrado = useMemo(()=>{
     const q=normalizar(extratoFiltro);
     if(!q) return historico;
@@ -210,6 +228,20 @@ export default function App() {
     setExtratoFiltro(termo);
     setDestacarExtrato(idExtrato(corr.codigoFabricante));
     setAba('extrato');
+  }
+
+  function selecionarPorNome(item:(typeof resultadosNome)[number]){
+    if(item.tipo==='FAB' && item.fab){
+      setProdutoBusca(item.fab.produto);
+      void resolver(item.fab.codigoFabricante);
+      return;
+    }
+
+    if(item.tipo==='GG' && item.gg){
+      setProdutoBusca(item.gg.produto);
+      const codigo=item.gg.codigoManual || item.gg.codigoAutomatico;
+      if(codigo) void resolver(codigo);
+    }
   }
 
   function confirmarSubstituicao(nome:string){
@@ -331,6 +363,23 @@ export default function App() {
         </div>
         <button className="primary wide" onClick={()=>setScanning(v=>!v)}>{scanning?'Fechar câmera':'Abrir câmera'}</button>
         {scanning&&<Scanner onCode={codigo=>{void resolver(codigo);}}/>}
+
+        <div className="card">
+          <h3>Buscar por nome do produto</h3>
+          <p className="muted">Pesquise pelo nome na base GG e na base de fabricantes.</p>
+          <div className="search">
+            <input value={produtoBusca} onChange={e=>setProdutoBusca(e.target.value)} placeholder="Ex.: Coca Cola, Guaraná, Água..."/>
+            {produtoBusca&&<button onClick={()=>setProdutoBusca('')}>Limpar</button>}
+          </div>
+          {produtoBusca.trim()&&resultadosNome.length===0&&<div className="not-found"><b>Nenhum produto encontrado por esse nome.</b></div>}
+          {resultadosNome.map(item=><button className="candidate" key={item.key} onClick={()=>selecionarPorNome(item)}>
+            <span>
+              <b>{item.produto}</b>
+              {item.tipo==='GG'&&item.gg&&<small>GG · Manual: {item.gg.codigoManual||'—'} · Automático: {item.gg.codigoAutomatico||'—'}</small>}
+              {item.tipo==='FAB'&&item.fab&&<small>Fabricante · Código: {item.fab.codigoFabricante}</small>}
+            </span>
+          </button>)}
+        </div>
 
         {resultado?.corr&&<>
           {resultado.jaExistia&&<div className="already-banner">
