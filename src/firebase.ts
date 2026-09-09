@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const cfg = {
-  apiKey: 'AIzaSyAnIsGqWThocB4UB0PshUI4MPX4DknWRHE',
+  apiKey: 'AIzaSyAnIsGqWTHocB4UB0PshUI4MPX4DknWRHE',
   authDomain: 'leitor-codigo-barras-gg.firebaseapp.com',
   projectId: 'leitor-codigo-barras-gg',
   storageBucket: 'leitor-codigo-barras-gg.firebasestorage.app',
