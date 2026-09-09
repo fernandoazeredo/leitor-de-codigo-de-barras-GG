@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { Correspondencia, ProdutoFabricante, ProdutoGG } from './types';
+import type { Correspondencia, HistoricoComparacao, ProdutoFabricante, ProdutoGG } from './types';
 
 export type ProdutoGGManualImport = { produto: string; codigoManual: string };
 export type ProdutoGGAutomaticoImport = { produto: string; codigoAutomatico: string };
@@ -92,7 +92,6 @@ export async function importarGGAutomatico(file: File): Promise<ProdutoGGAutomat
   }).filter(x => x.codigoAutomatico && x.produto);
 }
 
-// Compatibilidade com arquivos GG que contenham as duas colunas no mesmo arquivo.
 export async function importarProdutosGG(file: File): Promise<ProdutoGG[]> {
   const [manuais, automaticos] = await Promise.all([importarGGManual(file), importarGGAutomatico(file)]);
   const key = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
@@ -145,7 +144,6 @@ export function exportarGGAutomatico(rows: ProdutoGG[]) {
   })) });
 }
 
-// Mantido para compatibilidade interna; gera as duas colunas GG juntas quando necessário.
 export function exportarProdutosGG(rows: ProdutoGG[]) {
   baixar('PRODUTOS_GG_COMPLETO.xlsx', { 'Codigos GG': rows.map(x => ({
     'Produto/Serviço': x.produto,
@@ -180,6 +178,20 @@ export function exportarConsolidado(fabricantes: ProdutoFabricante[], produtos: 
     COMPATIBILIDADE: ''
   }));
   baixar('RELATORIO_CONSOLIDADO_CODIGOS_GG.xlsx', { 'Base Consolidada': [...confirmados, ...sem], 'Sem Correspondencia': sem });
+}
+
+export function exportarExtrato(rows: HistoricoComparacao[]) {
+  baixar('EXTRATO_COMPARACOES_GG.xlsx', { Extrato: rows.map(x => ({
+    DATA_HORA: new Date(x.dataHora).toLocaleString('pt-BR'),
+    CODIGO_PESQUISADO: x.codigoPesquisado,
+    CODIGO_FABRICANTE: x.codigoFabricante,
+    PRODUTO_FABRICANTE: x.produtoFabricante,
+    CODIGO_GG_AUTOMATICO: x.codigoAutomatico,
+    CODIGO_GG_MANUAL: x.codigoManual ?? '',
+    PRODUTO_GG: x.produtoGG,
+    COMPATIBILIDADE: `${x.score}%`,
+    USUARIO: x.usuario ?? ''
+  })) });
 }
 
 export function modeloFabricantes() {
