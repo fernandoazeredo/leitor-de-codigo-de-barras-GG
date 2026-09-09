@@ -134,7 +134,9 @@ export async function salvarCorrespondencia(item: Correspondencia) {
 export async function salvarHistorico(item: HistoricoComparacao) {
   if (!firebaseEnabled || !db) {
     const atual = getLocal(KEYS.historico, [] as HistoricoComparacao[]);
-    setLocal(KEYS.historico, [item, ...atual].slice(0, 5000));
+    const map = new Map(atual.map(x => [x.id, x]));
+    map.set(item.id, item);
+    setLocal(KEYS.historico, [...map.values()].sort((a,b)=>b.dataHora.localeCompare(a.dataHora)).slice(0, 5000));
     return;
   }
 
@@ -143,6 +145,8 @@ export async function salvarHistorico(item: HistoricoComparacao) {
   } catch (error) {
     console.warn('Não foi possível gravar o extrato no Firebase; salvando localmente.', error);
     const atual = getLocal(KEYS.historico, [] as HistoricoComparacao[]);
-    setLocal(KEYS.historico, [item, ...atual].slice(0, 5000));
+    const map = new Map(atual.map(x => [x.id, x]));
+    map.set(item.id, item);
+    setLocal(KEYS.historico, [...map.values()].sort((a,b)=>b.dataHora.localeCompare(a.dataHora)).slice(0, 5000));
   }
 }
