@@ -20,6 +20,14 @@ service cloud.firestore {
         && request.resource.data.perfil == 'ADMINISTRADOR';
     }
 
+    function isSelfOperatorBootstrap(uid) {
+      return signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.ativo == true
+        && request.resource.data.perfil == 'OPERADOR';
+    }
+
     function isActive() {
       return signedIn()
         && exists(userPath(request.auth.uid))
@@ -32,8 +40,8 @@ service cloud.firestore {
     }
 
     match /usuarios/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow create: if isAdmin() || isOwnerBootstrap(uid);
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin() || isOwnerBootstrap(uid) || isSelfOperatorBootstrap(uid);
       allow update, delete: if isAdmin();
     }
 
