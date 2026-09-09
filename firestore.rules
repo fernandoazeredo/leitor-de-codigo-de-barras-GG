@@ -1,6 +1,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/usuarios/$(uid);
+    }
+
+    function isActive() {
+      return signedIn()
+        && exists(userPath(request.auth.uid))
+        && get(userPath(request.auth.uid)).data.ativo == true;
+    }
+
+    function isAdmin() {
+      return isActive()
+        && get(userPath(request.auth.uid)).data.perfil == 'ADMINISTRADOR';
+    }
+
+    match /usuarios/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /produtos_fabricantes/{docId} {
+      allow read: if isActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /produtos_gg/{docId} {
+      allow read: if isActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /correspondencias/{docId} {
+      allow read: if isActive();
+      allow create, update: if isActive();
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
