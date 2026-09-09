@@ -33,12 +33,24 @@ type TipoPlanilha = 'fab'|'gg-manual'|'gg-auto';
 
 type ResultadoBusca = {
   fab?: ProdutoFabricante;
+  gg?: ProdutoGG;
   corr?: Correspondencia;
   candidatos?: ReturnType<typeof melhoresCandidatos>;
   jaExistia?: boolean;
 };
 
 const chaveProduto = (s:string) => normalizar(s);
+const normalizarCodigo = (v?:string) => String(v ?? '')
+  .trim()
+  .toUpperCase()
+  .replace(/^['"]+|['"]+$/g,'')
+  .replace(/\s+/g,'')
+  .replace(/\.0+$/,'');
+const mesmoCodigo = (a?:string,b?:string) => {
+  const aa=normalizarCodigo(a);
+  const bb=normalizarCodigo(b);
+  return Boolean(aa && bb && aa===bb);
+};
 const idExtrato = (codigoFabricante:string) => `corr-${codigoFabricante}`;
 
 export default function App() {
@@ -132,29 +144,42 @@ export default function App() {
 
     if(!c){setResultado(null);return;}
 
-    const corr=corrs.find(x=>x.codigoFabricante===c || x.codigoAutomatico===c || x.codigoManual===c);
+    const corr=corrs.find(x=>mesmoCodigo(x.codigoFabricante,c) || mesmoCodigo(x.codigoAutomatico,c) || mesmoCodigo(x.codigoManual,c));
     if(corr){
       const registro=await garantirNoExtrato(corr,c);
       setDestacarExtrato(registro.id);
-      setResultado({fab:fabricantes.find(x=>x.codigoFabricante===corr.codigoFabricante),corr,jaExistia:true});
+      setResultado({
+        fab:fabricantes.find(x=>mesmoCodigo(x.codigoFabricante,corr.codigoFabricante)),
+        gg:produtosGG.find(x=>x.id===corr.produtoGGId || mesmoCodigo(x.codigoAutomatico,corr.codigoAutomatico) || mesmoCodigo(x.codigoManual,corr.codigoManual)),
+        corr,
+        jaExistia:true
+      });
       return;
     }
 
-    const fab=fabricantes.find(x=>x.codigoFabricante===c);
+    const fab=fabricantes.find(x=>mesmoCodigo(x.codigoFabricante,c));
     if(fab){
       setResultado({fab,candidatos:melhoresCandidatos(fab,produtosGG)});
       return;
     }
 
-    const gg=produtosGG.find(x=>x.codigoAutomatico===c || x.codigoManual===c);
+    const gg=produtosGG.find(x=>mesmoCodigo(x.codigoAutomatico,c) || mesmoCodigo(x.codigoManual,c));
     if(gg){
-      const achada=corrs.find(x=>x.produtoGGId===gg.id || (gg.codigoAutomatico && x.codigoAutomatico===gg.codigoAutomatico) || (gg.codigoManual && x.codigoManual===gg.codigoManual));
+      const achada=corrs.find(x=>x.produtoGGId===gg.id || mesmoCodigo(x.codigoAutomatico,gg.codigoAutomatico) || mesmoCodigo(x.codigoManual,gg.codigoManual));
       if(achada){
         const registro=await garantirNoExtrato(achada,c);
         setDestacarExtrato(registro.id);
-        setResultado({fab:fabricantes.find(f=>f.codigoFabricante===achada.codigoFabricante),corr:achada,jaExistia:true});
+        setResultado({
+          fab:fabricantes.find(f=>mesmoCodigo(f.codigoFabricante,achada.codigoFabricante)),
+          gg,
+          corr:achada,
+          jaExistia:true
+        });
         return;
       }
+
+      setResultado({gg});
+      return;
     }
 
     setResultado(null);
@@ -198,7 +223,7 @@ export default function App() {
     if(existente){
       const registro=await garantirNoExtrato(existente,fab.codigoFabricante);
       setDestacarExtrato(registro.id);
-      setResultado({fab,corr:existente,jaExistia:true});
+      setResultado({fab,gg,corr:existente,jaExistia:true});
       return;
     }
 
@@ -219,7 +244,7 @@ export default function App() {
     await salvarHistorico(registro);
     await recarregar();
     setDestacarExtrato(registro.id);
-    setResultado({fab,corr:item,jaExistia:false});
+    setResultado({fab,gg,corr:item,jaExistia:false});
   }
 
   function verNoExtrato(corr:Correspondencia){
@@ -399,6 +424,16 @@ export default function App() {
           </div>
         </>}
 
+        {resultado?.gg&&!resultado.corr&&!resultado.fab&&<div className="card success comparison-card">
+          <h2>Código GG localizado</h2>
+          <b>{resultado.gg.produto}</b>
+          <dl>
+            <dt>GG automático</dt><dd>{resultado.gg.codigoAutomatico||'Não informado'}</dd>
+            <dt>GG manual</dt><dd>{resultado.gg.codigoManual||'Não informado'}</dd>
+          </dl>
+          <p className="muted">O código existe na base GG. Ainda não há correspondência confirmada com um código de fabricante para este produto.</p>
+        </div>}
+
         {resultado?.fab&&!resultado.corr&&<div className="card">
           <h2>{resultado.fab.produto}</h2>
           <p>Código fabricante: <b>{resultado.fab.codigoFabricante}</b></p>
@@ -409,7 +444,7 @@ export default function App() {
           </button>)}
         </div>}
 
-        {!resultado&&busca&&<div className="not-found"><b>Nenhuma correspondência confirmada encontrada para este código.</b><span>Se o código estiver na base de fabricantes, confira a descrição ou faça a leitura novamente.</span></div>}
+        {!resultado&&busca&&<div className="not-found"><b>Código não encontrado.</b><span>Confira se o código está cadastrado na base de fabricantes, GG Manual ou GG Automático.</span></div>}
 
         {!resultado&&busca&&pesquisa.map(c=><button className="candidate" key={c.id} onClick={()=>void resolver(c.codigoFabricante)}>
           <span><b>{c.produtoGG}</b><small>{c.codigoFabricante} · {c.codigoAutomatico||'—'} · {c.codigoManual||'—'}</small></span>
