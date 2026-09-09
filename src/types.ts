@@ -30,3 +30,17 @@ export type Correspondencia = {
   status: 'CONFIRMADO' | 'PENDENTE';
   score: number;
 };
+
+export type HistoricoComparacao = {
+  id: string;
+  tipo: 'VINCULO_CRIADO' | 'CONSULTA_EXISTENTE';
+  dataHora: string;
+  codigoPesquisado: string;
+  codigoFabricante: string;
+  codigoAutomatico: string;
+  codigoManual?: string;
+  produtoFabricante: string;
+  produtoGG: string;
+  score: number;
+  usuario?: string;
+};
