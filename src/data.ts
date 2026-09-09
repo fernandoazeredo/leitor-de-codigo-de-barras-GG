@@ -1,5 +1,6 @@
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
-import { db, firebaseEnabled } from './firebase';
+import { auth, db, firebaseEnabled } from './firebase';
+import { baseGGOficial } from './baseGGOficial';
 import type { Correspondencia, HistoricoComparacao, ProdutoFabricante, ProdutoGG } from './types';
 
 const KEYS = {
@@ -8,6 +9,11 @@ const KEYS = {
   correspondencias: 'gg_correspondencias',
   historico: 'gg_historico_comparacoes',
 };
+
+const ADMIN_EMAILS = new Set([
+  'fernandoazeredo64@gmail.com',
+  'cassyomattos@gmail.com'
+]);
 
 const demoFabricantes: ProdutoFabricante[] = [
   { id: '7894900011517', codigoFabricante: '7894900011517', produto: 'Coca-Cola Original PET 2L', marca: 'Coca-Cola', embalagem: 'PET', volumePeso: '2 L' },
@@ -43,7 +49,22 @@ export async function listarFabricantes(): Promise<ProdutoFabricante[]> {
 export async function listarProdutosGG(): Promise<ProdutoGG[]> {
   return comFallback(async () => {
     const snap = await getDocs(collection(db, 'produtos_gg'));
-    return snap.docs.map(d => d.data() as ProdutoGG);
+    const rows = snap.docs.map(d => d.data() as ProdutoGG);
+
+    const email = auth.currentUser?.email?.toLowerCase() ?? '';
+    const admin = ADMIN_EMAILS.has(email);
+    const cocaOk = rows.some(x =>
+      x.codigoManual === '16' &&
+      x.codigoAutomatico === '2553317150145' &&
+      x.produto === 'COCA COLA COMUM LATA 350ml C12'
+    );
+
+    if (admin && (rows.length !== baseGGOficial.length || !cocaOk)) {
+      await salvarProdutosGG(baseGGOficial, true);
+      return baseGGOficial;
+    }
+
+    return rows;
   }, () => getLocal(KEYS.produtos, demoGG));
 }
 
