@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Scanner } from './Scanner';
+import { BrandMark } from './BrandMark';
 import { firebaseEnabled } from './firebase';
 import { listarCorrespondencias, listarFabricantes, listarProdutosGG, salvarCorrespondencia, salvarFabricantes, salvarProdutosGG } from './data';
 import { exportarConsolidado, exportarFabricantes, exportarProdutosGG, importarFabricantes, importarProdutosGG, modeloFabricantes, modeloProdutosGG } from './excel';
@@ -50,7 +51,7 @@ export default function App() {
   async function handleImport(kind:'fab'|'gg', file?:File){ if(!file)return; if(kind==='fab') await salvarFabricantes(await importarFabricantes(file)); else await salvarProdutosGG(await importarProdutosGG(file)); await recarregar(); }
 
   return <div className="app">
-    <header><div><strong>GG</strong><span>Leitor de Código de Barras</span></div><small>{firebaseEnabled?'Firebase conectado':'Modo local'}</small></header>
+    <header><div><BrandMark compact/><span>Leitor de Código de Barras</span></div><small>{firebaseEnabled?'Firebase conectado':'Modo local'}</small></header>
     <main>
       {aba==='leitor' && <section>
         <h1>Localizar códigos do produto</h1><p className="muted">Leia o código do fabricante ou pesquise pelo código do fabricante, código GG automático ou código GG manual.</p>
