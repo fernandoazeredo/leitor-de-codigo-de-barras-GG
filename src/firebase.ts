@@ -2,13 +2,14 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const cfg = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: 'AIzaSyAnIsGqWThocB4UB0PshUI4MPX4DknWRHE',
+  authDomain: 'leitor-codigo-barras-gg.firebaseapp.com',
+  projectId: 'leitor-codigo-barras-gg',
+  storageBucket: 'leitor-codigo-barras-gg.firebasestorage.app',
+  messagingSenderId: '577165996641',
+  appId: '1:577165996641:web:5dea69ffebca555ac3f020',
 };
 
-export const firebaseEnabled = Boolean(cfg.apiKey && cfg.projectId && cfg.appId);
-export const db = firebaseEnabled ? getFirestore(getApps()[0] ?? initializeApp(cfg)) : null;
+export const firebaseEnabled = true;
+const app = getApps()[0] ?? initializeApp(cfg);
+export const db = getFirestore(app);
