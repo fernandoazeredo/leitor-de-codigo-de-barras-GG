@@ -22,20 +22,35 @@ function getLocal<T>(key: string, fallback: T): T {
 }
 function setLocal<T>(key: string, value: T) { localStorage.setItem(key, JSON.stringify(value)); }
 
+async function comFallback<T>(operacao: () => Promise<T>, fallback: () => T | Promise<T>): Promise<T> {
+  if (!firebaseEnabled || !db) return await fallback();
+  try {
+    return await operacao();
+  } catch (error) {
+    console.warn('Firebase indisponível nesta etapa; usando base local temporária.', error);
+    return await fallback();
+  }
+}
+
 export async function listarFabricantes(): Promise<ProdutoFabricante[]> {
-  if (!firebaseEnabled || !db) return getLocal(KEYS.fabricantes, demoFabricantes);
-  const snap = await getDocs(collection(db, 'produtos_fabricantes'));
-  return snap.docs.map(d => d.data() as ProdutoFabricante);
+  return comFallback(async () => {
+    const snap = await getDocs(collection(db, 'produtos_fabricantes'));
+    return snap.docs.map(d => d.data() as ProdutoFabricante);
+  }, () => getLocal(KEYS.fabricantes, demoFabricantes));
 }
+
 export async function listarProdutosGG(): Promise<ProdutoGG[]> {
-  if (!firebaseEnabled || !db) return getLocal(KEYS.produtos, demoGG);
-  const snap = await getDocs(collection(db, 'produtos_gg'));
-  return snap.docs.map(d => d.data() as ProdutoGG);
+  return comFallback(async () => {
+    const snap = await getDocs(collection(db, 'produtos_gg'));
+    return snap.docs.map(d => d.data() as ProdutoGG);
+  }, () => getLocal(KEYS.produtos, demoGG));
 }
+
 export async function listarCorrespondencias(): Promise<Correspondencia[]> {
-  if (!firebaseEnabled || !db) return getLocal(KEYS.correspondencias, [] as Correspondencia[]);
-  const snap = await getDocs(collection(db, 'correspondencias'));
-  return snap.docs.map(d => d.data() as Correspondencia);
+  return comFallback(async () => {
+    const snap = await getDocs(collection(db, 'correspondencias'));
+    return snap.docs.map(d => d.data() as Correspondencia);
+  }, () => getLocal(KEYS.correspondencias, [] as Correspondencia[]));
 }
 
 export async function salvarFabricantes(rows: ProdutoFabricante[], substituir = false) {
@@ -46,11 +61,20 @@ export async function salvarFabricantes(rows: ProdutoFabricante[], substituir = 
     setLocal(KEYS.fabricantes, [...map.values()]);
     return;
   }
-  if (substituir) {
-    const atuais = await getDocs(collection(db, 'produtos_fabricantes'));
-    await Promise.all(atuais.docs.map(x => deleteDoc(doc(db, 'produtos_fabricantes', x.id))));
+
+  try {
+    if (substituir) {
+      const atuais = await getDocs(collection(db, 'produtos_fabricantes'));
+      await Promise.all(atuais.docs.map(x => deleteDoc(doc(db, 'produtos_fabricantes', x.id))));
+    }
+    await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_fabricantes', x.codigoFabricante), x)));
+  } catch (error) {
+    console.warn('Não foi possível gravar no Firebase; salvando localmente.', error);
+    const atual = substituir ? [] : getLocal(KEYS.fabricantes, demoFabricantes);
+    const map = new Map(atual.map(x => [x.codigoFabricante, x]));
+    rows.forEach(x => map.set(x.codigoFabricante, x));
+    setLocal(KEYS.fabricantes, [...map.values()]);
   }
-  await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_fabricantes', x.codigoFabricante), x)));
 }
 
 export async function salvarProdutosGG(rows: ProdutoGG[], substituir = false) {
@@ -61,11 +85,20 @@ export async function salvarProdutosGG(rows: ProdutoGG[], substituir = false) {
     setLocal(KEYS.produtos, [...map.values()]);
     return;
   }
-  if (substituir) {
-    const atuais = await getDocs(collection(db, 'produtos_gg'));
-    await Promise.all(atuais.docs.map(x => deleteDoc(doc(db, 'produtos_gg', x.id))));
+
+  try {
+    if (substituir) {
+      const atuais = await getDocs(collection(db, 'produtos_gg'));
+      await Promise.all(atuais.docs.map(x => deleteDoc(doc(db, 'produtos_gg', x.id))));
+    }
+    await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_gg', x.codigoAutomatico), x)));
+  } catch (error) {
+    console.warn('Não foi possível gravar no Firebase; salvando localmente.', error);
+    const atual = substituir ? [] : getLocal(KEYS.produtos, demoGG);
+    const map = new Map(atual.map(x => [x.codigoAutomatico, x]));
+    rows.forEach(x => map.set(x.codigoAutomatico, x));
+    setLocal(KEYS.produtos, [...map.values()]);
   }
-  await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_gg', x.codigoAutomatico), x)));
 }
 
 export async function salvarCorrespondencia(item: Correspondencia) {
@@ -76,5 +109,14 @@ export async function salvarCorrespondencia(item: Correspondencia) {
     setLocal(KEYS.correspondencias, [...map.values()]);
     return;
   }
-  await setDoc(doc(db, 'correspondencias', item.codigoFabricante), item);
+
+  try {
+    await setDoc(doc(db, 'correspondencias', item.codigoFabricante), item);
+  } catch (error) {
+    console.warn('Não foi possível gravar correspondência no Firebase; salvando localmente.', error);
+    const atual = getLocal(KEYS.correspondencias, [] as Correspondencia[]);
+    const map = new Map(atual.map(x => [x.codigoFabricante, x]));
+    map.set(item.codigoFabricante, item);
+    setLocal(KEYS.correspondencias, [...map.values()]);
+  }
 }
