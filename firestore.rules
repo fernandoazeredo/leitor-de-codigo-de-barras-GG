@@ -10,6 +10,16 @@ service cloud.firestore {
       return /databases/$(database)/documents/usuarios/$(uid);
     }
 
+    function isOwnerBootstrap(uid) {
+      return signedIn()
+        && request.auth.uid == uid
+        && request.auth.token.email == 'fernandoazeredo64@gmail.com'
+        && request.auth.token.email_verified == true
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.ativo == true
+        && request.resource.data.perfil == 'ADMINISTRADOR';
+    }
+
     function isActive() {
       return signedIn()
         && exists(userPath(request.auth.uid))
@@ -23,7 +33,8 @@ service cloud.firestore {
 
     match /usuarios/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() || isOwnerBootstrap(uid);
+      allow update, delete: if isAdmin();
     }
 
     match /produtos_fabricantes/{docId} {
