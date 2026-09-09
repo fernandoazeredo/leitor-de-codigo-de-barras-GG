@@ -484,10 +484,10 @@ export default function App() {
 
     <nav>{([
       ['leitor','Leitor'],
+      ['extrato','Extrato'],
       ['fabricantes','Fabricantes'],
       ['gg','Códigos GG'],
-      ['correspondencias','Consolidado'],
-      ['extrato','Extrato']
+      ['correspondencias','Consolidado']
     ] as [Aba,string][]).map(([k,l])=><button className={aba===k?'active':''} key={k} onClick={()=>setAba(k)}>{l}</button>)}</nav>
   </div>;
 }
