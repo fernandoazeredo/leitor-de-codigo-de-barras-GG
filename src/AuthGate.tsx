@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   getRedirectResult,
   onAuthStateChanged,
   setPersistence,
@@ -8,6 +9,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  updateProfile,
   type User
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -27,15 +29,18 @@ const OWNER_EMAIL = 'fernandoazeredo64@gmail.com';
 function mensagemErro(codigo?: string) {
   switch (codigo) {
     case 'auth/invalid-credential': return 'E-mail ou senha inválidos.';
+    case 'auth/email-already-in-use': return 'Já existe uma conta cadastrada com este e-mail.';
+    case 'auth/invalid-email': return 'Informe um endereço de e-mail válido.';
+    case 'auth/weak-password': return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
     case 'auth/user-disabled': return 'Este usuário está desativado.';
     case 'auth/too-many-requests': return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
     case 'auth/popup-closed-by-user': return 'Login com Google cancelado.';
     case 'auth/popup-blocked': return 'O navegador bloqueou a janela do Google. Tentaremos o acesso por redirecionamento.';
     case 'auth/unauthorized-domain': return 'Este endereço ainda não está autorizado no Firebase Authentication.';
-    case 'auth/operation-not-allowed': return 'O provedor Google não está habilitado no Firebase Authentication.';
+    case 'auth/operation-not-allowed': return 'Este método de acesso ainda não está habilitado no Firebase Authentication.';
     case 'auth/network-request-failed': return 'Falha de conexão. Verifique a internet e tente novamente.';
     case 'auth/account-exists-with-different-credential': return 'Já existe uma conta com este e-mail usando outro método de acesso.';
-    default: return codigo ? `Não foi possível entrar (${codigo}).` : 'Não foi possível entrar. Verifique os dados e tente novamente.';
+    default: return codigo ? `Não foi possível concluir (${codigo}).` : 'Não foi possível concluir. Verifique os dados e tente novamente.';
   }
 }
 
@@ -75,9 +80,13 @@ export default function AuthGate() {
   const [user, setUser] = useState<User | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [modoCadastro, setModoCadastro] = useState(false);
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [erro, setErro] = useState('');
   const [entrando, setEntrando] = useState(false);
 
@@ -116,6 +125,45 @@ export default function AuthGate() {
     }
   }
 
+  async function cadastrarEmail(e: FormEvent) {
+    e.preventDefault();
+    setErro('');
+
+    if (!nome.trim()) {
+      setErro('Informe o nome do usuário.');
+      return;
+    }
+    if (senha.length < 6) {
+      setErro('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      setErro('As senhas informadas não coincidem.');
+      return;
+    }
+
+    setEntrando(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
+      await updateProfile(cred.user, { displayName: nome.trim() });
+
+      const novoPerfil: Perfil = {
+        nome: nome.trim(),
+        email: cred.user.email ?? email.trim(),
+        ativo: true,
+        perfil: 'OPERADOR'
+      };
+
+      await setDoc(doc(db, 'usuarios', cred.user.uid), novoPerfil);
+      setUser(cred.user);
+      setPerfil(novoPerfil);
+    } catch (e: any) {
+      setErro(mensagemErro(e?.code));
+    } finally {
+      setEntrando(false);
+    }
+  }
+
   async function entrarGoogle() {
     setEntrando(true);
     setErro('');
@@ -143,6 +191,15 @@ export default function AuthGate() {
     await signOut(auth);
   }
 
+  function alternarModo() {
+    setModoCadastro(v => !v);
+    setErro('');
+    setSenha('');
+    setConfirmarSenha('');
+    setMostrarSenha(false);
+    setMostrarConfirmacao(false);
+  }
+
   if (carregando) {
     return <div className="auth-page"><div className="auth-card"><BrandMark /><h1>Leitor de Código de Barras GG</h1><p>Validando acesso...</p></div></div>;
   }
@@ -152,12 +209,14 @@ export default function AuthGate() {
       <div className="auth-card">
         <BrandMark />
         <h1>Leitor de Código de Barras GG</h1>
-        <p className="muted">Acesso restrito a usuários autorizados.</p>
-        <form onSubmit={entrarEmail} className="auth-form">
+        <p className="muted">{modoCadastro ? 'Crie seu acesso ao aplicativo.' : 'Entre com seu e-mail e senha ou com Google.'}</p>
+
+        <form onSubmit={modoCadastro ? cadastrarEmail : entrarEmail} className="auth-form">
+          {modoCadastro && <label>Nome<input type="text" value={nome} onChange={e => setNome(e.target.value)} required autoComplete="name" /></label>}
           <label>E-mail<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" /></label>
           <label>Senha
             <div className="password-field">
-              <input type={mostrarSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)} required autoComplete="current-password" />
+              <input type={mostrarSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)} required minLength={modoCadastro ? 6 : undefined} autoComplete={modoCadastro ? 'new-password' : 'current-password'} />
               <button
                 className="password-toggle"
                 type="button"
@@ -169,13 +228,36 @@ export default function AuthGate() {
               </button>
             </div>
           </label>
-          <button className="primary wide" disabled={entrando}>{entrando ? 'Entrando...' : 'Entrar'}</button>
+
+          {modoCadastro && <label>Confirmar senha
+            <div className="password-field">
+              <input type={mostrarConfirmacao ? 'text' : 'password'} value={confirmarSenha} onChange={e => setConfirmarSenha(e.target.value)} required minLength={6} autoComplete="new-password" />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setMostrarConfirmacao(v => !v)}
+                aria-label={mostrarConfirmacao ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                title={mostrarConfirmacao ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                <EyeIcon aberto={mostrarConfirmacao} />
+              </button>
+            </div>
+          </label>}
+
+          <button className="primary wide" disabled={entrando}>{entrando ? (modoCadastro ? 'Criando conta...' : 'Entrando...') : (modoCadastro ? 'Criar conta' : 'Entrar')}</button>
         </form>
-        <div className="auth-divider"><span>ou</span></div>
-        <button className="google-button wide" onClick={entrarGoogle} disabled={entrando}>
-          <GoogleGIcon />
-          <span>{entrando ? 'Conectando...' : 'Entrar com Google'}</span>
+
+        <button className="auth-mode-link" type="button" onClick={alternarModo} disabled={entrando}>
+          {modoCadastro ? 'Já tenho conta — Entrar' : 'Novo usuário — Criar conta'}
         </button>
+
+        {!modoCadastro && <>
+          <div className="auth-divider"><span>ou</span></div>
+          <button className="google-button wide" onClick={entrarGoogle} disabled={entrando}>
+            <GoogleGIcon />
+            <span>{entrando ? 'Conectando...' : 'Entrar com Google'}</span>
+          </button>
+        </>}
         {erro && <p className="auth-error">{erro}</p>}
       </div>
     </div>;
@@ -187,7 +269,7 @@ export default function AuthGate() {
         <BrandMark />
         <h1>Acesso não autorizado</h1>
         <p>Você entrou como <b>{user.email}</b>, mas este usuário ainda não está autorizado para usar o aplicativo.</p>
-        <p className="muted">Um administrador deve cadastrar o seu UID na coleção <b>usuarios</b> e marcar o acesso como ativo.</p>
+        <p className="muted">Entre com uma conta já cadastrada ou solicite liberação ao administrador.</p>
         {erro && <p className="auth-error">{erro}</p>}
         <button className="wide" onClick={sair}>Sair</button>
       </div>
