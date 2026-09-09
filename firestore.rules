@@ -10,10 +10,18 @@ service cloud.firestore {
       return /databases/$(database)/documents/usuarios/$(uid);
     }
 
-    function isOwnerBootstrap(uid) {
+    function isAdminEmail() {
+      return signedIn()
+        && request.auth.token.email in [
+          'fernandoazeredo64@gmail.com',
+          'cassyomattos@gmail.com'
+        ];
+    }
+
+    function isAdminBootstrap(uid) {
       return signedIn()
         && request.auth.uid == uid
-        && request.auth.token.email == 'fernandoazeredo64@gmail.com'
+        && isAdminEmail()
         && request.auth.token.email_verified == true
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.ativo == true
@@ -41,7 +49,7 @@ service cloud.firestore {
 
     match /usuarios/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if isAdmin() || isOwnerBootstrap(uid) || isSelfOperatorBootstrap(uid);
+      allow create: if isAdmin() || isAdminBootstrap(uid) || isSelfOperatorBootstrap(uid);
       allow update, delete: if isAdmin();
     }
 
