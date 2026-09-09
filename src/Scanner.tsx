@@ -1,30 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 
-type ScannerProps = {
-  onCode: (code: string) => void;
-  onClose: () => void;
-};
-
-export function Scanner({ onCode, onClose }: ScannerProps) {
+export function Scanner({ onCode }:{ onCode:(code:string)=>void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const controlsRef = useRef<{ stop: () => void }>();
   const [erro, setErro] = useState('');
 
+  function desligarCamera() {
+    try { controlsRef.current?.stop(); } catch { /* noop */ }
+    controlsRef.current = undefined;
+    const stream = videoRef.current?.srcObject as MediaStream | null;
+    stream?.getTracks().forEach(track => track.stop());
+    if (videoRef.current) videoRef.current.srcObject = null;
+  }
+
+  function fecharCamera() {
+    desligarCamera();
+    onCode('');
+  }
+
   useEffect(() => {
-    let controls: { stop: () => void } | undefined;
     let encerrado = false;
     const reader = new BrowserMultiFormatReader();
 
-    const desligarCamera = () => {
-      try { controls?.stop(); } catch { /* noop */ }
-      const stream = videoRef.current?.srcObject as MediaStream | null;
-      stream?.getTracks().forEach(track => track.stop());
-      if (videoRef.current) videoRef.current.srcObject = null;
-    };
-
     (async () => {
       try {
-        controls = await reader.decodeFromConstraints(
+        controlsRef.current = await reader.decodeFromConstraints(
           { video: { facingMode: { ideal: 'environment' } } },
           videoRef.current!,
           result => {
@@ -49,7 +50,7 @@ export function Scanner({ onCode, onClose }: ScannerProps) {
   return <div className="scanner" style={{ position: 'relative' }}>
     <button
       type="button"
-      onClick={onClose}
+      onClick={fecharCamera}
       aria-label="Fechar câmera"
       style={{
         position: 'absolute',
