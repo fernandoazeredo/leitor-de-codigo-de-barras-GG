@@ -1,11 +1,12 @@
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase';
-import type { Correspondencia, ProdutoFabricante, ProdutoGG } from './types';
+import type { Correspondencia, HistoricoComparacao, ProdutoFabricante, ProdutoGG } from './types';
 
 const KEYS = {
   fabricantes: 'gg_fabricantes',
   produtos: 'gg_produtos',
   correspondencias: 'gg_correspondencias',
+  historico: 'gg_historico_comparacoes',
 };
 
 const demoFabricantes: ProdutoFabricante[] = [
@@ -51,6 +52,15 @@ export async function listarCorrespondencias(): Promise<Correspondencia[]> {
     const snap = await getDocs(collection(db, 'correspondencias'));
     return snap.docs.map(d => d.data() as Correspondencia);
   }, () => getLocal(KEYS.correspondencias, [] as Correspondencia[]));
+}
+
+export async function listarHistorico(): Promise<HistoricoComparacao[]> {
+  return comFallback(async () => {
+    const snap = await getDocs(collection(db, 'historico_comparacoes'));
+    return snap.docs
+      .map(d => d.data() as HistoricoComparacao)
+      .sort((a,b) => b.dataHora.localeCompare(a.dataHora));
+  }, () => getLocal(KEYS.historico, [] as HistoricoComparacao[]).sort((a,b)=>b.dataHora.localeCompare(a.dataHora)));
 }
 
 export async function salvarFabricantes(rows: ProdutoFabricante[], substituir = false) {
@@ -118,5 +128,21 @@ export async function salvarCorrespondencia(item: Correspondencia) {
     const map = new Map(atual.map(x => [x.codigoFabricante, x]));
     map.set(item.codigoFabricante, item);
     setLocal(KEYS.correspondencias, [...map.values()]);
+  }
+}
+
+export async function salvarHistorico(item: HistoricoComparacao) {
+  if (!firebaseEnabled || !db) {
+    const atual = getLocal(KEYS.historico, [] as HistoricoComparacao[]);
+    setLocal(KEYS.historico, [item, ...atual].slice(0, 5000));
+    return;
+  }
+
+  try {
+    await setDoc(doc(db, 'historico_comparacoes', item.id), item);
+  } catch (error) {
+    console.warn('Não foi possível gravar o extrato no Firebase; salvando localmente.', error);
+    const atual = getLocal(KEYS.historico, [] as HistoricoComparacao[]);
+    setLocal(KEYS.historico, [item, ...atual].slice(0, 5000));
   }
 }
