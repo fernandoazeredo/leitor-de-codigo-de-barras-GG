@@ -80,8 +80,8 @@ export async function salvarFabricantes(rows: ProdutoFabricante[], substituir = 
 export async function salvarProdutosGG(rows: ProdutoGG[], substituir = false) {
   if (!firebaseEnabled || !db) {
     const atual = substituir ? [] : await listarProdutosGG();
-    const map = new Map(atual.map(x => [x.codigoAutomatico, x]));
-    rows.forEach(x => map.set(x.codigoAutomatico, x));
+    const map = new Map(atual.map(x => [x.id, x]));
+    rows.forEach(x => map.set(x.id, x));
     setLocal(KEYS.produtos, [...map.values()]);
     return;
   }
@@ -91,12 +91,12 @@ export async function salvarProdutosGG(rows: ProdutoGG[], substituir = false) {
       const atuais = await getDocs(collection(db, 'produtos_gg'));
       await Promise.all(atuais.docs.map(x => deleteDoc(doc(db, 'produtos_gg', x.id))));
     }
-    await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_gg', x.codigoAutomatico), x)));
+    await Promise.all(rows.map(x => setDoc(doc(db, 'produtos_gg', x.id), x)));
   } catch (error) {
     console.warn('Não foi possível gravar no Firebase; salvando localmente.', error);
     const atual = substituir ? [] : getLocal(KEYS.produtos, demoGG);
-    const map = new Map(atual.map(x => [x.codigoAutomatico, x]));
-    rows.forEach(x => map.set(x.codigoAutomatico, x));
+    const map = new Map(atual.map(x => [x.id, x]));
+    rows.forEach(x => map.set(x.id, x));
     setLocal(KEYS.produtos, [...map.values()]);
   }
 }
