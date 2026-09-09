@@ -16,6 +16,7 @@ export default function App() {
   const [corrs,setCorrs]=useState<Correspondencia[]>([]);
   const [busca,setBusca]=useState('');
   const [scanning,setScanning]=useState(false);
+  const [planilhasOpen,setPlanilhasOpen]=useState(false);
   const [resultado,setResultado]=useState<{fab?:ProdutoFabricante; corr?:Correspondencia; candidatos?:ReturnType<typeof melhoresCandidatos>}|null>(null);
 
   async function recarregar(){
@@ -48,10 +49,41 @@ export default function App() {
     await salvarCorrespondencia(item); await recarregar(); setResultado({fab,corr:item});
   }
 
-  async function handleImport(kind:'fab'|'gg', file?:File){ if(!file)return; if(kind==='fab') await salvarFabricantes(await importarFabricantes(file)); else await salvarProdutosGG(await importarProdutosGG(file)); await recarregar(); }
+  async function handleImport(kind:'fab'|'gg', file?:File){
+    if(!file)return;
+    if(kind==='fab') await salvarFabricantes(await importarFabricantes(file));
+    else await salvarProdutosGG(await importarProdutosGG(file));
+    await recarregar();
+    setPlanilhasOpen(false);
+  }
+
+  function fecharEExecutar(fn:()=>void){
+    fn();
+    setPlanilhasOpen(false);
+  }
 
   return <div className="app">
-    <header><div><BrandMark compact/><span>Leitor de Código de Barras</span></div><small>{firebaseEnabled?'Firebase conectado':'Modo local'}</small></header>
+    <header>
+      <div className="header-brand"><BrandMark compact/><span>Leitor de Código de Barras</span></div>
+      <div className="header-actions">
+        <small>{firebaseEnabled?'Firebase conectado':'Modo local'}</small>
+        <div className="sheet-menu-wrap">
+          <button className="sheet-menu-button" onClick={()=>setPlanilhasOpen(v=>!v)} aria-expanded={planilhasOpen} aria-haspopup="menu">Planilhas ▾</button>
+          {planilhasOpen && <div className="sheet-menu" role="menu">
+            <b>Modelos</b>
+            <button onClick={()=>fecharEExecutar(modeloFabricantes)}>Modelo Fabricantes</button>
+            <button onClick={()=>fecharEExecutar(modeloProdutosGG)}>Modelo Códigos GG</button>
+            <b>Importar</b>
+            <label className="sheet-menu-import">Importar Fabricantes<input hidden type="file" accept=".xlsx,.xls" onChange={e=>handleImport('fab',e.target.files?.[0])}/></label>
+            <label className="sheet-menu-import">Importar Códigos GG<input hidden type="file" accept=".xlsx,.xls" onChange={e=>handleImport('gg',e.target.files?.[0])}/></label>
+            <b>Exportar</b>
+            <button onClick={()=>fecharEExecutar(()=>exportarFabricantes(fabricantes))}>Exportar Fabricantes</button>
+            <button onClick={()=>fecharEExecutar(()=>exportarProdutosGG(produtosGG))}>Exportar Códigos GG</button>
+            <button className="sheet-menu-primary" onClick={()=>fecharEExecutar(()=>exportarConsolidado(fabricantes,produtosGG,corrs))}>Exportar Consolidado</button>
+          </div>}
+        </div>
+      </div>
+    </header>
     <main>
       {aba==='leitor' && <section>
         <h1>Localizar códigos do produto</h1><p className="muted">Leia o código do fabricante ou pesquise pelo código do fabricante, código GG automático ou código GG manual.</p>
