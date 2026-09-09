@@ -28,6 +28,16 @@ service cloud.firestore {
         && request.resource.data.perfil == 'ADMINISTRADOR';
     }
 
+    function isAdminSelfUpgrade(uid) {
+      return signedIn()
+        && request.auth.uid == uid
+        && isAdminEmail()
+        && request.auth.token.email_verified == true
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.ativo == true
+        && request.resource.data.perfil == 'ADMINISTRADOR';
+    }
+
     function isSelfOperatorBootstrap(uid) {
       return signedIn()
         && request.auth.uid == uid
@@ -50,7 +60,8 @@ service cloud.firestore {
     match /usuarios/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if isAdmin() || isAdminBootstrap(uid) || isSelfOperatorBootstrap(uid);
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || isAdminSelfUpgrade(uid);
+      allow delete: if isAdmin();
     }
 
     match /produtos_fabricantes/{docId} {
