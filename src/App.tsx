@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Scanner } from './Scanner';
 import { BrandMark } from './BrandMark';
-import { auth, firebaseEnabled } from './firebase';
+import { auth } from './firebase';
 import {
   listarCorrespondencias,
   listarFabricantes,
@@ -69,6 +69,26 @@ export default function App() {
   }
 
   useEffect(()=>{void recarregar();},[]);
+
+  useEffect(()=>{
+    if(!planilhasOpen) return;
+
+    const fecharFora=(event:PointerEvent)=>{
+      const alvo=event.target as Node | null;
+      const menu=document.querySelector('.sheet-menu-wrap');
+      if(alvo && menu && !menu.contains(alvo)) setPlanilhasOpen(false);
+    };
+    const fecharEsc=(event:KeyboardEvent)=>{
+      if(event.key==='Escape') setPlanilhasOpen(false);
+    };
+
+    document.addEventListener('pointerdown',fecharFora);
+    document.addEventListener('keydown',fecharEsc);
+    return ()=>{
+      document.removeEventListener('pointerdown',fecharFora);
+      document.removeEventListener('keydown',fecharEsc);
+    };
+  },[planilhasOpen]);
 
   useEffect(()=>{
     if(aba!=='extrato' || !destacarExtrato) return;
@@ -274,10 +294,10 @@ export default function App() {
     <header>
       <div className="header-brand"><BrandMark compact/><span>Leitor de Código de Barras</span></div>
       <div className="header-actions">
-        <small>{firebaseEnabled?'Firebase conectado':'Modo local'}</small>
         <div className="sheet-menu-wrap">
           <button className="sheet-menu-button" onClick={()=>setPlanilhasOpen(v=>!v)} aria-expanded={planilhasOpen} aria-haspopup="menu">Planilhas ▾</button>
           {planilhasOpen&&<div className="sheet-menu" role="menu">
+            <button onClick={()=>setPlanilhasOpen(false)} aria-label="Fechar menu">✕ Fechar</button>
             <b>1. Fabricantes</b>
             <button onClick={()=>fecharEExecutar(modeloFabricantes)}>Baixar modelo</button>
             <label className="sheet-menu-import">Importar / Substituir<input hidden type="file" accept=".xlsx,.xls" onChange={e=>handleImport('fab',e.target.files?.[0])}/></label>
