@@ -44,8 +44,6 @@ async function carregarPerfil(u: User): Promise<Perfil | null> {
   const snap = await getDoc(ref);
   if (snap.exists()) return snap.data() as Perfil;
 
-  // Bootstrap seguro do primeiro administrador do projeto.
-  // As regras do Firestore permitem esta criação apenas para o e-mail proprietário verificado.
   if (u.email?.toLowerCase() === OWNER_EMAIL && u.emailVerified) {
     const novo: Perfil = {
       nome: u.displayName || 'Fernando Azeredo',
@@ -60,12 +58,26 @@ async function carregarPerfil(u: User): Promise<Perfil | null> {
   return null;
 }
 
+function EyeIcon({ aberto }: { aberto: boolean }) {
+  return aberto ? (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.2A10.9 10.9 0 0 1 12 4c5.4 0 9 5.5 9 5.5a17.3 17.3 0 0 1-3 3.6M6.2 6.2C4.2 7.5 3 9.5 3 9.5S6.6 15 12 15c1 0 1.9-.2 2.7-.5" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 12s3.5-5.5 9-5.5S21 12 21 12s-3.5 5.5-9 5.5S3 12 3 12Z" />
+      <circle cx="12" cy="12" r="2.4" />
+    </svg>
+  );
+}
+
 export default function AuthGate() {
   const [user, setUser] = useState<User | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [entrando, setEntrando] = useState(false);
 
@@ -109,12 +121,9 @@ export default function AuthGate() {
     setErro('');
 
     try {
-      // Popup é o fluxo principal e evita problemas de armazenamento entre domínios.
       await signInWithPopup(auth, googleProvider);
     } catch (e: any) {
       const code = e?.code as string | undefined;
-
-      // Em celulares/PWAs alguns navegadores bloqueiam popup; nesses casos usamos redirect.
       if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
         try {
           await signInWithRedirect(auth, googleProvider);
@@ -146,7 +155,20 @@ export default function AuthGate() {
         <p className="muted">Acesso restrito a usuários autorizados.</p>
         <form onSubmit={entrarEmail} className="auth-form">
           <label>E-mail<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" /></label>
-          <label>Senha<input type="password" value={senha} onChange={e => setSenha(e.target.value)} required autoComplete="current-password" /></label>
+          <label>Senha
+            <div className="password-field">
+              <input type={mostrarSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)} required autoComplete="current-password" />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setMostrarSenha(v => !v)}
+                aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                <EyeIcon aberto={mostrarSenha} />
+              </button>
+            </div>
+          </label>
           <button className="primary wide" disabled={entrando}>{entrando ? 'Entrando...' : 'Entrar'}</button>
         </form>
         <div className="auth-divider"><span>ou</span></div>
