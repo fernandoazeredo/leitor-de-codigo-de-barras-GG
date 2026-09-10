@@ -26,7 +26,8 @@ import {
   modeloGGManual
 } from './excel';
 import { melhoresCandidatos, normalizar } from './matching';
-import type { Correspondencia, HistoricoComparacao, ProdutoFabricante, ProdutoGG } from './types';
+import { identificarProdutoExterno } from './produtoExterno';
+import type { Correspondencia, HistoricoComparacao, ProdutoExterno, ProdutoFabricante, ProdutoGG } from './types';
 
 type Aba = 'leitor'|'fabricantes'|'gg'|'correspondencias'|'extrato';
 type TipoPlanilha = 'fab'|'gg-manual'|'gg-auto';
@@ -37,6 +38,8 @@ type ResultadoBusca = {
   corr?: Correspondencia;
   candidatos?: ReturnType<typeof melhoresCandidatos>;
   jaExistia?: boolean;
+  fonte?: ProdutoExterno['fonte'];
+  mensagem?: string;
 };
 
 const chaveProduto = (s:string) => normalizar(s);
@@ -52,6 +55,25 @@ const mesmoCodigo = (a?:string,b?:string) => {
   return Boolean(aa && bb && aa===bb);
 };
 const idExtrato = (codigoFabricante:string) => `corr-${codigoFabricante}`;
+const rotuloFonte = (fonte?:ProdutoExterno['fonte']) => fonte==='OPEN_FOOD_FACTS'
+  ? 'Open Food Facts'
+  : fonte==='COSMOS'
+    ? 'Cosmos / Bluesoft'
+    : fonte==='MANUAL'
+      ? 'Identificação manual'
+      : '';
+
+function externoParaFabricante(produto:ProdutoExterno):ProdutoFabricante{
+  return {
+    id:produto.codigo,
+    codigoFabricante:produto.codigo,
+    produto:produto.produto,
+    marca:produto.marca,
+    embalagem:produto.embalagem,
+    volumePeso:produto.volumePeso,
+    observacao:[rotuloFonte(produto.fonte),produto.ncm?`NCM ${produto.ncm}`:''].filter(Boolean).join(' · ')
+  };
+}
 
 export default function App() {
   const [aba,setAba]=useState<Aba>('leitor');
@@ -64,6 +86,8 @@ export default function App() {
   const [scanning,setScanning]=useState(false);
   const [planilhasOpen,setPlanilhasOpen]=useState(false);
   const [resultado,setResultado]=useState<ResultadoBusca|null>(null);
+  const [consultando,setConsultando]=useState(false);
+  const [descricaoManual,setDescricaoManual]=useState('');
   const [extratoBusca,setExtratoBusca]=useState('');
   const [extratoFiltro,setExtratoFiltro]=useState('');
   const [destacarExtrato,setDestacarExtrato]=useState<string|null>(null);
@@ -127,7 +151,7 @@ export default function App() {
 
   const garantirNoExtrato = useCallback(async (corr:Correspondencia,codigoPesquisado:string) => {
     const id=idExtrato(corr.codigoFabricante);
-    const existente=historico.find(x=>x.id===id || x.codigoFabricante===corr.codigoFabricante);
+    const existente=historico.find(x=>x.id===id || mesmoCodigo(x.codigoFabricante,corr.codigoFabricante));
     if(existente) return existente;
 
     const item=criarItemExtrato(corr,codigoPesquisado);
@@ -137,10 +161,11 @@ export default function App() {
   },[historico,criarItemExtrato]);
 
   const resolver = useCallback(async (codigo:string) => {
-    const c=codigo.trim();
+    const c=normalizarCodigo(codigo);
     setBusca(c);
     setScanning(false);
     setDestacarExtrato(null);
+    setDescricaoManual('');
 
     if(!c){setResultado(null);return;}
 
@@ -182,7 +207,30 @@ export default function App() {
       return;
     }
 
+    if(!/^\d{8,14}$/.test(c)){
+      setResultado({mensagem:'Código não localizado nas bases GG. Para identificação automática externa, informe um EAN/GTIN com 8 a 14 dígitos.'});
+      return;
+    }
+
+    setConsultando(true);
     setResultado(null);
+    try{
+      const resposta=await identificarProdutoExterno(c);
+      if(resposta.encontrado&&resposta.produto){
+        const identificado=externoParaFabricante(resposta.produto);
+        setResultado({
+          fab:identificado,
+          candidatos:melhoresCandidatos(identificado,produtosGG),
+          fonte:resposta.produto.fonte
+        });
+      }else{
+        setResultado({mensagem:resposta.mensagem || 'Produto não identificado automaticamente. Informe parte do nome do produto.'});
+      }
+    }catch(erro){
+      setResultado({mensagem:erro instanceof Error ? erro.message : 'Não foi possível consultar as bases externas.'});
+    }finally{
+      setConsultando(false);
+    }
   },[corrs,fabricantes,produtosGG,garantirNoExtrato]);
 
   const pesquisa = useMemo(()=>{
@@ -219,7 +267,7 @@ export default function App() {
   },[historico,extratoFiltro]);
 
   async function confirmar(fab:ProdutoFabricante,gg:ProdutoGG,score:number){
-    const existente=corrs.find(x=>x.codigoFabricante===fab.codigoFabricante);
+    const existente=corrs.find(x=>mesmoCodigo(x.codigoFabricante,fab.codigoFabricante));
     if(existente){
       const registro=await garantirNoExtrato(existente,fab.codigoFabricante);
       setDestacarExtrato(registro.id);
@@ -245,6 +293,19 @@ export default function App() {
     await recarregar();
     setDestacarExtrato(registro.id);
     setResultado({fab,gg,corr:item,jaExistia:false});
+  }
+
+  function compararDescricaoManual(){
+    const nome=descricaoManual.trim();
+    const codigo=normalizarCodigo(busca);
+    if(!nome||!codigo) return;
+    const fab:ProdutoFabricante={
+      id:codigo,
+      codigoFabricante:codigo,
+      produto:nome,
+      observacao:'Identificação manual'
+    };
+    setResultado({fab,candidatos:melhoresCandidatos(fab,produtosGG),fonte:'MANUAL'});
   }
 
   function verNoExtrato(corr:Correspondencia){
@@ -381,17 +442,19 @@ export default function App() {
     <main>
       {aba==='leitor'&&<section>
         <h1>Localizar códigos do produto</h1>
-        <p className="muted">Leia o código do fabricante ou pesquise por qualquer um dos três códigos. O sistema verifica primeiro se a comparação já foi feita.</p>
+        <p className="muted">Leia o EAN/GTIN do produto. Se a correspondência ainda não existir, o sistema identifica o produto primeiro no Open Food Facts e depois na Cosmos, compara com a base GG e apresenta os melhores candidatos.</p>
         <div className="search">
-          <input value={busca} onChange={e=>setBusca(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void resolver(busca);}} placeholder="Digite qualquer um dos 3 códigos"/>
-          <button className="primary" onClick={()=>void resolver(busca)}>Buscar</button>
+          <input value={busca} onChange={e=>setBusca(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void resolver(busca);}} placeholder="Digite EAN/GTIN ou um código GG"/>
+          <button className="primary" disabled={consultando} onClick={()=>void resolver(busca)}>{consultando?'Consultando...':'Buscar'}</button>
         </div>
-        <button className="primary wide" onClick={()=>setScanning(v=>!v)}>{scanning?'Fechar câmera':'Abrir câmera'}</button>
+        <button className="primary wide" disabled={consultando} onClick={()=>setScanning(v=>!v)}>{scanning?'Fechar câmera':'Abrir câmera'}</button>
         {scanning&&<Scanner onCode={codigo=>{void resolver(codigo);}}/>}
+
+        {consultando&&<div className="card"><b>Identificando produto...</b><p className="muted">Consultando Open Food Facts. Se não houver resultado, a Cosmos será consultada automaticamente.</p></div>}
 
         <div className="card">
           <h3>Buscar por nome do produto</h3>
-          <p className="muted">Pesquise pelo nome na base GG e na base de fabricantes.</p>
+          <p className="muted">Pesquise pelo nome na base GG e nos produtos de fabricante já cadastrados.</p>
           <div className="search">
             <input value={produtoBusca} onChange={e=>setProdutoBusca(e.target.value)} placeholder="Ex.: Coca Cola, Guaraná, Água..."/>
             {produtoBusca&&<button onClick={()=>setProdutoBusca('')}>Limpar</button>}
@@ -401,22 +464,22 @@ export default function App() {
             <span>
               <b>{item.produto}</b>
               {item.tipo==='GG'&&item.gg&&<small>GG · Manual: {item.gg.codigoManual||'—'} · Automático: {item.gg.codigoAutomatico||'—'}</small>}
-              {item.tipo==='FAB'&&item.fab&&<small>Fabricante · Código: {item.fab.codigoFabricante}</small>}
+              {item.tipo==='FAB'&&item.fab&&<small>Código externo: {item.fab.codigoFabricante}</small>}
             </span>
           </button>)}
         </div>
 
         {resultado?.corr&&<>
           {resultado.jaExistia&&<div className="already-banner">
-            <div><b>✓ Já temos esta correspondência.</b><small>Ela já foi realizada e está registrada no Extrato. Nenhuma duplicação foi criada.</small></div>
+            <div><b>✓ Já temos esta correspondência.</b><small>Ela já foi realizada e está registrada no Extrato. Nenhuma consulta externa ou duplicação foi necessária.</small></div>
             <button onClick={()=>verNoExtrato(resultado.corr!)}>Ver no Extrato</button>
           </div>}
-          {!resultado.jaExistia&&<div className="new-banner"><b>✓ Nova correspondência registrada.</b><span>O registro foi incluído no Extrato.</span></div>}
+          {!resultado.jaExistia&&<div className="new-banner"><b>✓ Nova correspondência registrada.</b><span>Nas próximas leituras deste EAN/GTIN, o sistema usará diretamente este vínculo.</span></div>}
           <div className="card success comparison-card">
             <h2>Comparação do produto</h2>
             <b>{resultado.corr.produtoGG}</b>
             <dl>
-              <dt>Código fabricante</dt><dd>{resultado.corr.codigoFabricante}</dd>
+              <dt>Código lido / EAN/GTIN</dt><dd>{resultado.corr.codigoFabricante}</dd>
               <dt>GG automático</dt><dd>{resultado.corr.codigoAutomatico||'Não informado'}</dd>
               <dt>GG manual</dt><dd>{resultado.corr.codigoManual||'Não informado'}</dd>
               <dt>Compatibilidade</dt><dd>{resultado.corr.score}%</dd>
@@ -431,29 +494,38 @@ export default function App() {
             <dt>GG automático</dt><dd>{resultado.gg.codigoAutomatico||'Não informado'}</dd>
             <dt>GG manual</dt><dd>{resultado.gg.codigoManual||'Não informado'}</dd>
           </dl>
-          <p className="muted">O código existe na base GG. Ainda não há correspondência confirmada com um código de fabricante para este produto.</p>
+          <p className="muted">O código existe na base GG. Ainda não há correspondência confirmada com um EAN/GTIN externo para este produto.</p>
         </div>}
 
         {resultado?.fab&&!resultado.corr&&<div className="card">
           <h2>{resultado.fab.produto}</h2>
-          <p>Código fabricante: <b>{resultado.fab.codigoFabricante}</b></p>
-          <p className="muted">Ainda não existe correspondência confirmada para este código. Selecione o produto GG correto:</p>
+          <p>Código lido / EAN/GTIN: <b>{resultado.fab.codigoFabricante}</b></p>
+          {resultado.fonte&&<p className="muted">Produto identificado por: <b>{rotuloFonte(resultado.fonte)}</b>{resultado.fab.marca?` · Marca: ${resultado.fab.marca}`:''}{resultado.fab.volumePeso?` · ${resultado.fab.volumePeso}`:''}</p>}
+          <p className="muted">Selecione o produto GG correto. O vínculo confirmado ficará salvo para as próximas leituras.</p>
           <h3>Possíveis produtos GG</h3>
+          {resultado.candidatos?.length===0&&<div className="not-found"><b>A base GG está vazia ou não possui candidatos.</b></div>}
           {resultado.candidatos?.map(x=><button className="candidate" key={x.produto.id} onClick={()=>void confirmar(resultado.fab!,x.produto,x.score)}>
-            <span><b>{x.produto.produto}</b><small>Automático: {x.produto.codigoAutomatico||'—'} · Manual: {x.produto.codigoManual||'—'}</small></span><em>{x.score}%</em>
+            <span><b>{x.produto.produto}</b><small>GG Manual: {x.produto.codigoManual||'—'} · GG Automático: {x.produto.codigoAutomatico||'—'}</small></span><em>{x.score}%</em>
           </button>)}
         </div>}
 
-        {!resultado&&busca&&<div className="not-found"><b>Código não encontrado.</b><span>Confira se o código está cadastrado na base de fabricantes, GG Manual ou GG Automático.</span></div>}
+        {resultado?.mensagem&&!resultado.fab&&!resultado.gg&&!resultado.corr&&<div className="not-found">
+          <b>Produto não identificado automaticamente.</b>
+          <span>{resultado.mensagem}</span>
+          <div className="search">
+            <input value={descricaoManual} onChange={e=>setDescricaoManual(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')compararDescricaoManual();}} placeholder="Ex.: Coca Cola Original Lata 350ml"/>
+            <button className="primary" disabled={!descricaoManual.trim()} onClick={compararDescricaoManual}>Comparar com GG</button>
+          </div>
+        </div>}
 
-        {!resultado&&busca&&pesquisa.map(c=><button className="candidate" key={c.id} onClick={()=>void resolver(c.codigoFabricante)}>
+        {resultado?.mensagem&&pesquisa.map(c=><button className="candidate" key={c.id} onClick={()=>void resolver(c.codigoFabricante)}>
           <span><b>{c.produtoGG}</b><small>{c.codigoFabricante} · {c.codigoAutomatico||'—'} · {c.codigoManual||'—'}</small></span>
         </button>)}
       </section>}
 
       {aba==='fabricantes'&&<section>
         <h1>Produtos dos fabricantes</h1>
-        <p className="muted">Base 1: código e produto informados pelo fabricante.</p>
+        <p className="muted">Base complementar/legada de códigos e produtos informados por fabricantes. Ela não é necessária para identificar um novo EAN/GTIN.</p>
         <div className="actions">
           <label className="button">Importar / Substituir<input hidden type="file" accept=".xlsx,.xls" onChange={e=>handleImport('fab',e.target.files?.[0])}/></label>
           <button onClick={()=>exportarFabricantes(fabricantes)}>Exportar .xlsx</button>
@@ -484,11 +556,11 @@ export default function App() {
 
       {aba==='correspondencias'&&<section>
         <h1>Base consolidada</h1>
-        <p className="muted">Relatório de saída com fabricante + GG manual + GG automático.</p>
+        <p className="muted">Relatório de saída com código externo + GG manual + GG automático.</p>
         <button className="primary wide" onClick={()=>exportarConsolidado(fabricantes,produtosGG,corrs)}>Exportar Excel consolidado</button>
         <div className="stats"><span><b>{fabricantes.length}</b> fabricantes</span><span><b>{produtosGG.length}</b> produtos GG</span><span><b>{corrs.length}</b> vinculados</span></div>
         {corrs.map(c=><div className="card compact" key={c.id}>
-          <b>{c.produtoGG}</b><small>Fabricante: {c.codigoFabricante}</small><small>GG automático: {c.codigoAutomatico||'—'}</small><small>GG manual: {c.codigoManual||'—'}</small>
+          <b>{c.produtoGG}</b><small>EAN/GTIN externo: {c.codigoFabricante}</small><small>GG automático: {c.codigoAutomatico||'—'}</small><small>GG manual: {c.codigoManual||'—'}</small>
           <button className="mini-link" onClick={()=>verNoExtrato(c)}>Ver no Extrato</button>
         </div>)}
       </section>}
@@ -506,9 +578,9 @@ export default function App() {
           <div className="extract-head"><b>Registro {i+1}</b><span>{new Date(x.dataHora).toLocaleString('pt-BR')}</span></div>
           {destacarExtrato===x.id&&<div className="extract-found">← Registro localizado</div>}
           <strong>{x.produtoGG}</strong>
-          <small>Produto fabricante: {x.produtoFabricante}</small>
+          <small>Produto externo: {x.produtoFabricante}</small>
           <dl>
-            <dt>Código fabricante</dt><dd>{x.codigoFabricante}</dd>
+            <dt>Código lido / EAN/GTIN</dt><dd>{x.codigoFabricante}</dd>
             <dt>GG automático</dt><dd>{x.codigoAutomatico||'—'}</dd>
             <dt>GG manual</dt><dd>{x.codigoManual||'—'}</dd>
             <dt>Compatibilidade</dt><dd>{x.score}%</dd>
