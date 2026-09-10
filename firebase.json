@@ -1,8 +1,20 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [
+      {
+        "source": "/api/identificar-produto",
+        "function": {
+          "functionId": "identificarProduto",
+          "region": "southamerica-east1"
+        }
+      },
+      { "source": "**", "destination": "/index.html" }
+    ]
   },
   "firestore": { "rules": "firestore.rules" }
 }
