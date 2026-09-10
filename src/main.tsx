@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import AuthGate from './AuthGate';
 import { HeaderTools } from './HeaderTools';
 import './styles.css';
+import './header-tools.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
