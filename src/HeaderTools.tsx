@@ -19,14 +19,9 @@ const DICAS = [
 function BookIcon(){
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5A4.5 4.5 0 0 1 8 3h3v16H8a4.5 4.5 0 0 0-4.5 2V5.5Zm17 0A4.5 4.5 0 0 0 16 3h-3v16h3a4.5 4.5 0 0 1 4.5 2V5.5Z"/></svg>;
 }
-
-function MoonIcon(){
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.6 8.6 0 0 1 8.9 3.8 8.9 8.9 0 1 0 20.2 15.1Z"/></svg>;
-}
-
-function SunIcon(){
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>;
-}
+function MoonIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.6 8.6 0 0 1 8.9 3.8 8.9 8.9 0 1 0 20.2 15.1Z"/></svg>;}
+function SunIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>;}
+function ExitIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M13 8l4 4-4 4M17 12H9"/></svg>;}
 
 export function HeaderTools() {
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -37,8 +32,8 @@ export function HeaderTools() {
     if (salvo === 'dark' || salvo === 'light') return salvo;
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-
   const alternarTema = () => setTema(t => t === 'light' ? 'dark' : 'light');
+  const sair = () => (document.querySelector('.logout-fab') as HTMLButtonElement | null)?.click();
 
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
@@ -57,17 +52,6 @@ export function HeaderTools() {
   }, []);
 
   useEffect(() => {
-    const abrirDicas = () => setDicasOpen(true);
-    const trocarTema = () => alternarTema();
-    window.addEventListener('gg-open-tips', abrirDicas);
-    window.addEventListener('gg-toggle-theme', trocarTema);
-    return () => {
-      window.removeEventListener('gg-open-tips', abrirDicas);
-      window.removeEventListener('gg-toggle-theme', trocarTema);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!dicasOpen) return;
     const fechar = (event: KeyboardEvent) => { if (event.key === 'Escape') setDicasOpen(false); };
     document.addEventListener('keydown', fechar);
@@ -77,35 +61,25 @@ export function HeaderTools() {
   if (!host) return null;
 
   const headerActions = <>
-    <button className="tips-button header-utility" type="button" onClick={() => setDicasOpen(true)} aria-label="Abrir dicas de uso"><BookIcon/><span>DICAS</span></button>
-    <button
-      className="theme-button header-utility"
-      type="button"
-      onClick={alternarTema}
-      aria-label={tema === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
-      title={tema === 'light' ? 'Modo escuro' : 'Modo claro'}
-    >{tema === 'light' ? <MoonIcon/> : <SunIcon/>}<span>Tema</span></button>
+    <button className="tips-button header-utility" type="button" onClick={() => setDicasOpen(true)}><BookIcon/><span>DICAS</span></button>
+    <button className="theme-button header-utility" type="button" onClick={alternarTema}>{tema === 'light' ? <MoonIcon/> : <SunIcon/>}<span>Tema</span></button>
+    <button className="header-logout header-utility" type="button" onClick={sair}><ExitIcon/><span>Sair</span></button>
   </>;
 
   const menuActions = menuHost ? createPortal(<div className="menu-extra-actions">
     <b>Ações</b>
     <button type="button" onClick={() => setDicasOpen(true)}>DICAS — Como usar</button>
     <button type="button" onClick={alternarTema}>{tema === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}</button>
-    <button type="button" onClick={() => (document.querySelector('.logout-fab') as HTMLButtonElement | null)?.click()}>Sair</button>
+    <button type="button" onClick={sair}>Sair</button>
   </div>, menuHost) : null;
 
   return <>
     {createPortal(headerActions, host)}
     {menuActions}
-    {dicasOpen && <div className="tips-overlay" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setDicasOpen(false); }}>
+    {dicasOpen && <div className="tips-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setDicasOpen(false); }}>
       <div className="tips-modal" role="dialog" aria-modal="true" aria-labelledby="tips-title">
-        <div className="tips-head">
-          <div><small>GUIA RÁPIDO</small><h2 id="tips-title">Como usar o Leitor GG</h2></div>
-          <button type="button" onClick={() => setDicasOpen(false)} aria-label="Fechar dicas">✕</button>
-        </div>
-        <div className="tips-content">
-          {DICAS.map(([titulo, texto]) => <div className="tip-step" key={titulo}><h3>{titulo}</h3><p>{texto}</p></div>)}
-        </div>
+        <div className="tips-head"><div><small>GUIA RÁPIDO</small><h2 id="tips-title">Como usar o Leitor GG</h2></div><button type="button" onClick={() => setDicasOpen(false)}>✕</button></div>
+        <div className="tips-content">{DICAS.map(([titulo, texto]) => <div className="tip-step" key={titulo}><h3>{titulo}</h3><p>{texto}</p></div>)}</div>
         <button className="primary tips-close" type="button" onClick={() => setDicasOpen(false)}>Entendi</button>
       </div>
     </div>}
