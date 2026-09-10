@@ -22,6 +22,7 @@ function BookIcon(){
 function MoonIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.6 8.6 0 0 1 8.9 3.8 8.9 8.9 0 1 0 20.2 15.1Z"/></svg>;}
 function SunIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>;}
 function ExitIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M13 8l4 4-4 4M17 12H9"/></svg>;}
+function ShareIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3M8 7l4-4 4 4M5 11v8h14v-8"/></svg>;}
 
 export function HeaderTools() {
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -34,6 +35,21 @@ export function HeaderTools() {
   });
   const alternarTema = () => setTema(t => t === 'light' ? 'dark' : 'light');
   const sair = () => (document.querySelector('.logout-fab') as HTMLButtonElement | null)?.click();
+  const compartilhar = async () => {
+    const url = 'https://leitor-codigo-barras-gg.web.app';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Leitor GG', text: 'Leitor de Código de Barras GG', url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      window.alert('Link do aplicativo copiado. Envie para a pessoa abrir e adicionar à tela inicial.');
+    } catch (erro) {
+      if ((erro as DOMException)?.name !== 'AbortError') {
+        window.alert(`Compartilhe este endereço: ${url}`);
+      }
+    }
+  };
 
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
@@ -61,6 +77,7 @@ export function HeaderTools() {
   if (!host) return null;
 
   const headerActions = <>
+    <button className="share-button" type="button" onClick={() => void compartilhar()} aria-label="Compartilhar aplicativo" title="Compartilhar aplicativo"><ShareIcon/></button>
     <button className="tips-button header-utility" type="button" onClick={() => setDicasOpen(true)}><BookIcon/><span>DICAS</span></button>
     <button className="theme-button header-utility" type="button" onClick={alternarTema}>{tema === 'light' ? <MoonIcon/> : <SunIcon/>}<span>Tema</span></button>
     <button className="header-logout header-utility" type="button" onClick={sair}><ExitIcon/><span>Sair</span></button>
