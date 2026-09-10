@@ -201,7 +201,16 @@ export function Scanner({ onCode }:{ onCode:(code:string)=>void }) {
       </label>}
     </div>
 
-    <p className="muted" style={{ marginTop:10 }}>
+    <p
+      className="muted"
+      style={{
+        marginTop:10,
+        color:'#ffffff',
+        textAlign:'center',
+        width:'100%',
+        display:'block'
+      }}
+    >
       Centralize todo o código dentro do quadro. Para garrafas e embalagens curvas, afaste um pouco a câmera, evite reflexos e gire o celular ou a embalagem até as barras ficarem bem definidas.
     </p>
     {erro && <p className="error">{erro}</p>}
