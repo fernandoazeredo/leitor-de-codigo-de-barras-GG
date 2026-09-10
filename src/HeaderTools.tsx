@@ -4,14 +4,14 @@ import { createPortal } from 'react-dom';
 type Tema = 'light' | 'dark';
 
 const DICAS = [
-  ['1. Prepare as bases', 'No menu hambúrguer, importe ou substitua as bases de Fabricantes, GG Manual e GG Automático. Use os modelos disponíveis para manter o formato correto.'],
+  ['1. Como funciona', 'Código lido → verifica correspondência → API → comparação com a base GG → confirmação do operador → gravação da correspondência'],
   ['2. Ler um código', 'Na aba Leitor, toque em Abrir câmera. Centralize todo o código de barras dentro do quadro. Em garrafas ou superfícies curvas, afaste um pouco a câmera e evite reflexos.'],
   ['3. Use foco, zoom e lanterna', 'Mantenha o aparelho firme. Se disponível, ajuste o Zoom e use a Lanterna em ambientes escuros. Gire a embalagem ou o celular quando o código estiver na vertical.'],
-  ['4. Buscar pelo código', 'Você também pode digitar no campo de busca o código do fabricante, o código GG Manual ou o GG Automático e tocar em Buscar.'],
-  ['5. Buscar pelo produto', 'Se não tiver o código, use Buscar por nome do produto. A pesquisa consulta as bases GG e Fabricantes.'],
-  ['6. Confirmar correspondência', 'Quando um código de fabricante ainda não estiver vinculado, o aplicativo apresenta possíveis produtos GG. Confira os dados antes de confirmar a opção correta.'],
+  ['4. Buscar pelo código', 'Você também pode digitar no campo de busca o código lido, o código GG Manual ou o GG Automático e tocar em Buscar.'],
+  ['5. Buscar pelo produto', 'Se não tiver o código, use Buscar por nome do produto para localizar opções na base GG.'],
+  ['6. Confirmar correspondência', 'Quando o código ainda não estiver vinculado, o aplicativo identifica o produto pela API e apresenta possíveis produtos GG. Confira os dados antes de confirmar a opção correta.'],
   ['7. Consultar o Extrato', 'A aba Extrato mostra as correspondências já realizadas. Pesquise por código ou produto para localizar um registro sem criar duplicidade.'],
-  ['8. Conferir as bases', 'As abas Fabricantes e Códigos GG permitem consultar o conteúdo atualmente carregado no aplicativo.'],
+  ['8. Conferir a base GG', 'A aba Códigos GG permite consultar os códigos Manual e Automático atualmente carregados no aplicativo.'],
   ['9. Gerar relatórios', 'Use Consolidado para visualizar os vínculos e o menu hambúrguer para exportar o relatório consolidado ou o Extrato em Excel.'],
   ['10. Dica para leitura difícil', 'Limpe a lente da câmera, deixe o código inteiro visível, procure boa iluminação, reduza reflexos e teste diferentes distâncias até as barras ficarem nítidas.']
 ] as const;
