@@ -25,11 +25,17 @@ jobs:
         with:
           node-version: 22
 
-      - name: Instalar dependências
+      - name: Instalar dependências do aplicativo
         run: npm install
 
       - name: Compilar aplicação
         run: npm run build
+
+      - name: Instalar dependências das Functions
+        run: npm --prefix functions install
+
+      - name: Compilar Functions
+        run: npm --prefix functions run build
 
       - name: Autenticar no Google Cloud
         uses: google-github-actions/auth@v3
@@ -39,5 +45,5 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
 
-      - name: Publicar Hosting e regras do Firestore
-        run: npx --yes firebase-tools@latest deploy --only "hosting,firestore:rules" --project leitor-codigo-barras-gg --non-interactive
+      - name: Publicar Hosting, Functions e regras do Firestore
+        run: npx --yes firebase-tools@latest deploy --only "hosting,functions,firestore:rules" --project leitor-codigo-barras-gg --non-interactive
