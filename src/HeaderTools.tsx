@@ -16,6 +16,18 @@ const DICAS = [
   ['10. Dica para leitura difícil', 'Limpe a lente da câmera, deixe o código inteiro visível, procure boa iluminação, reduza reflexos e teste diferentes distâncias até as barras ficarem nítidas.']
 ] as const;
 
+function BookIcon(){
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5A4.5 4.5 0 0 1 8 3h3v16H8a4.5 4.5 0 0 0-4.5 2V5.5Zm17 0A4.5 4.5 0 0 0 16 3h-3v16h3a4.5 4.5 0 0 1 4.5 2V5.5Z"/></svg>;
+}
+
+function MoonIcon(){
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.6 8.6 0 0 1 8.9 3.8 8.9 8.9 0 1 0 20.2 15.1Z"/></svg>;
+}
+
+function SunIcon(){
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>;
+}
+
 export function HeaderTools() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [menuHost, setMenuHost] = useState<HTMLElement | null>(null);
@@ -65,21 +77,21 @@ export function HeaderTools() {
   if (!host) return null;
 
   const headerActions = <>
-    <button className="tips-button header-utility" type="button" onClick={() => setDicasOpen(true)} aria-label="Abrir dicas de uso">◫ DICAS</button>
+    <button className="tips-button header-utility" type="button" onClick={() => setDicasOpen(true)} aria-label="Abrir dicas de uso"><BookIcon/><span>DICAS</span></button>
     <button
       className="theme-button header-utility"
       type="button"
       onClick={alternarTema}
       aria-label={tema === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
       title={tema === 'light' ? 'Modo escuro' : 'Modo claro'}
-    >{tema === 'light' ? '☾' : '☀'} <span>Tema</span></button>
+    >{tema === 'light' ? <MoonIcon/> : <SunIcon/>}<span>Tema</span></button>
   </>;
 
   const menuActions = menuHost ? createPortal(<div className="menu-extra-actions">
     <b>Ações</b>
-    <button type="button" onClick={() => setDicasOpen(true)}>◫ DICAS — Como usar</button>
-    <button type="button" onClick={alternarTema}>{tema === 'light' ? '☾ Ativar modo escuro' : '☀ Ativar modo claro'}</button>
-    <button type="button" onClick={() => (document.querySelector('.logout-fab') as HTMLButtonElement | null)?.click()}>↪ Sair</button>
+    <button type="button" onClick={() => setDicasOpen(true)}>DICAS — Como usar</button>
+    <button type="button" onClick={alternarTema}>{tema === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}</button>
+    <button type="button" onClick={() => (document.querySelector('.logout-fab') as HTMLButtonElement | null)?.click()}>Sair</button>
   </div>, menuHost) : null;
 
   return <>
