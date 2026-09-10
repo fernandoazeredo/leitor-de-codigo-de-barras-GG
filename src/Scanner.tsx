@@ -30,10 +30,6 @@ export function Scanner({ onCode }:{ onCode:(code:string)=>void }) {
     if (videoRef.current) videoRef.current.srcObject = null;
   }
 
-  function fecharCamera() {
-    desligarCamera();
-  }
-
   async function alternarLanterna() {
     const track = trackRef.current;
     if (!track) return;
@@ -144,22 +140,6 @@ export function Scanner({ onCode }:{ onCode:(code:string)=>void }) {
   }, [onCode]);
 
   return <div className="scanner" style={{ position: 'relative' }}>
-    <button
-      type="button"
-      onClick={fecharCamera}
-      aria-label="Fechar câmera"
-      style={{
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        zIndex: 4,
-        background: '#fff',
-        color: '#183629',
-        border: '1px solid #d7e1db',
-        boxShadow: '0 2px 8px #0003'
-      }}
-    >✕ Fechar câmera</button>
-
     <div style={{ position:'relative', overflow:'hidden', borderRadius:14 }}>
       <video ref={videoRef} muted playsInline style={{ width:'100%', display:'block' }} />
       <div aria-hidden="true" style={{
