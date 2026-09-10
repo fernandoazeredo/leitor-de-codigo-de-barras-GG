@@ -8,6 +8,17 @@ export type ProdutoFabricante = {
   observacao?: string;
 };
 
+export type ProdutoExterno = {
+  codigo: string;
+  produto: string;
+  marca?: string;
+  embalagem?: string;
+  volumePeso?: string;
+  imagem?: string;
+  ncm?: string;
+  fonte: 'OPEN_FOOD_FACTS' | 'COSMOS' | 'MANUAL';
+};
+
 export type ProdutoGG = {
   id: string;
   codigoAutomatico: string;

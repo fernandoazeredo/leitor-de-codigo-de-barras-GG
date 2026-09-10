@@ -1,0 +1,33 @@
+name: Validar integração APIs
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências do aplicativo
+        run: npm install
+
+      - name: Compilar aplicativo
+        run: npm run build
+
+      - name: Instalar dependências das Functions
+        run: npm --prefix functions install
+
+      - name: Compilar Functions
+        run: npm --prefix functions run build
