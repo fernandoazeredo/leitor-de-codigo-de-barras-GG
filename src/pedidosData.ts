@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase';
 import type { PedidoConferencia } from './conferenciaPedidosModel';
 
@@ -39,4 +39,13 @@ export async function salvarPedidoConferencia(item:PedidoConferencia){
     return;
   }
   await setDoc(doc(db,'pedidos_conferencia',item.id),item);
+}
+
+export async function excluirPedidoConferencia(id:string){
+  if(!firebaseEnabled||!db){
+    setLocal(getLocal().filter(item=>item.id!==id));
+    return;
+  }
+  await deleteDoc(doc(db,'pedidos_conferencia',id));
+  setLocal(getLocal().filter(item=>item.id!==id));
 }
