@@ -1,5 +1,15 @@
 export type StatusConferencia = 'AGUARDANDO'|'EM_CONFERENCIA'|'CONFERIDO'|'DIVERGENCIA'|'LIBERADO_AUTORIZACAO';
 
+export type TipoDivergencia = 'PRODUTO_ERRADO'|'QUANTIDADE_MAIOR'|'QUANTIDADE_MENOR';
+
+export type DivergenciaConferencia = {
+  id:string;
+  tipo:TipoDivergencia;
+  descricao:string;
+  codigo?:string;
+  dataHora:string;
+};
+
 export type ItemPedido = {
   id:string;
   codigoProduto?:string;
@@ -27,6 +37,8 @@ export type PedidoConferencia = {
   criadoEm:string;
   atualizadoEm:string;
   arquivoNome:string;
+  divergencias?:DivergenciaConferencia[];
+  conferenciaFinalizada?:boolean;
   autorizacao?:AutorizacaoDivergencia;
 };
 
@@ -65,7 +77,8 @@ export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
     cliente:dest?texto(dest,'xNome'):'Cliente não identificado',
     emitente:emit?texto(emit,'xNome'):undefined,
     dataEmissao:ide?(texto(ide,'dhEmi')||texto(ide,'dEmi')):undefined,
-    itens,status:'AGUARDANDO',criadoEm:agora,atualizadoEm:agora,arquivoNome
+    itens,status:'AGUARDANDO',criadoEm:agora,atualizadoEm:agora,arquivoNome,
+    divergencias:[],conferenciaFinalizada:false
   };
 }
 
@@ -75,10 +88,14 @@ export function situacaoItem(item:ItemPedido){
   return 'EXCEDENTE' as const;
 }
 
+export function temDivergenciaReal(pedido:PedidoConferencia){
+  return Boolean((pedido.divergencias?.length||0)>0 || pedido.itens.some(i=>i.conferido>i.quantidade) || (pedido.conferenciaFinalizada && pedido.itens.some(i=>i.conferido<i.quantidade)));
+}
+
 export function recalcularStatus(pedido:PedidoConferencia):StatusConferencia{
   if(pedido.autorizacao) return 'LIBERADO_AUTORIZACAO';
+  if(temDivergenciaReal(pedido)) return 'DIVERGENCIA';
   if(pedido.itens.every(i=>i.conferido===i.quantidade)) return 'CONFERIDO';
-  if(pedido.itens.some(i=>i.conferido>i.quantidade)) return 'DIVERGENCIA';
   if(pedido.itens.some(i=>i.conferido>0)) return 'EM_CONFERENCIA';
   return 'AGUARDANDO';
 }
