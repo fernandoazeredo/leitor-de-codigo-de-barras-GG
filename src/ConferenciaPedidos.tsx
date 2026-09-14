@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Scanner } from './Scanner';
-import { auth } from './firebase';
 import { listarCorrespondencias, listarProdutosGG } from './data';
 import { melhoresCandidatos } from './matching';
 import { identificarProdutoExterno } from './produtoExterno';
-import type { Correspondencia, ProdutoExterno, ProdutoFabricante, ProdutoGG } from './types';
+import type { ProdutoFabricante, ProdutoGG } from './types';
 import { parseNFeXml, recalcularStatus, situacaoItem, type PedidoConferencia } from './conferenciaPedidos';
 
 const KEY='gg_pedidos_conferencia_v1';
@@ -50,13 +49,13 @@ export function ConferenciaPedidos(){
     const c=normalizarCodigo(codigoLido);
     const [corrs,ggs]=await Promise.all([listarCorrespondencias(),listarProdutosGG()]);
     const corr=corrs.find(x=>normalizarCodigo(x.codigoFabricante)===c || normalizarCodigo(x.codigoAutomatico)===c || normalizarCodigo(x.codigoManual)===c);
-    if(corr) return {descricao:corr.produtoGG,ean:normalizarCodigo(corr.codigoFabricante),gg:corr};
+    if(corr) return {descricao:corr.produtoGG,ean:normalizarCodigo(corr.codigoFabricante)};
     const gg=ggs.find(x=>normalizarCodigo(x.codigoAutomatico)===c || normalizarCodigo(x.codigoManual)===c);
-    if(gg) return {descricao:gg.produto,ean:c,gg};
+    if(gg) return {descricao:gg.produto,ean:c};
     if(!/^\d{8,14}$/.test(c)) return null;
     const ext=await identificarProdutoExterno(c);
     if(!ext.encontrado||!ext.produto) return null;
-    return {descricao:ext.produto.produto,ean:c,externo:ext.produto};
+    return {descricao:ext.produto.produto,ean:c};
   }
 
   async function conferir(cod:string){
@@ -69,8 +68,7 @@ export function ConferenciaPedidos(){
     const direto=pedido.itens.find(i=>normalizarCodigo(i.ean)===c || normalizarCodigo(i.codigoProduto)===c);
     if(direto){
       const itens=pedido.itens.map(i=>i.id===direto.id?{...i,conferido:i.conferido+1}:i);
-      const atualizado={...pedido,itens,status:'EM_CONFERENCIA' as const};
-      atualizar(atualizado);
+      atualizar({...pedido,itens,status:'EM_CONFERENCIA'});
       const sit=situacaoItem(itens.find(i=>i.id===direto.id)!);
       setMensagem(sit==='OK'?`✅ ${direto.descricao}: conferido.`:sit==='FALTANDO'?`⚠️ ${direto.descricao}: ainda falta quantidade.`:`🔺 ${direto.descricao}: quantidade excedida.`);
       return;
