@@ -4,6 +4,7 @@ import AuthGate from './AuthGate';
 import { HeaderTools } from './HeaderTools';
 import './styles.css';
 import './header-tools.css';
+import './conferencia-pedidos.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
