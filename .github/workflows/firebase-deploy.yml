@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -31,10 +33,24 @@ jobs:
       - name: Compilar aplicação
         run: npm run build
 
+      - name: Verificar alterações nas Functions
+        id: functions_changed
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet HEAD^ HEAD -- functions/ firebase.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Instalar dependências das Functions
+        if: steps.functions_changed.outputs.changed == 'true'
         run: npm --prefix functions install
 
       - name: Compilar Functions
+        if: steps.functions_changed.outputs.changed == 'true'
         run: npm --prefix functions run build
 
       - name: Autenticar no Google Cloud
@@ -45,5 +61,9 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
 
-      - name: Publicar Hosting, Functions e regras do Firestore
-        run: npx --yes firebase-tools@latest deploy --only "hosting,functions,firestore:rules" --project leitor-codigo-barras-gg --non-interactive
+      - name: Publicar Hosting e regras do Firestore
+        run: npx --yes firebase-tools@latest deploy --only "hosting,firestore:rules" --project leitor-codigo-barras-gg --non-interactive
+
+      - name: Publicar Functions quando houver alteração
+        if: steps.functions_changed.outputs.changed == 'true'
+        run: npx --yes firebase-tools@latest deploy --only "functions" --project leitor-codigo-barras-gg --non-interactive
