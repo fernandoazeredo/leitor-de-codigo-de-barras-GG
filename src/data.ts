@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseEnabled } from './firebase';
 import { baseGGOficial } from './baseGGOficial';
 import type { Correspondencia, HistoricoComparacao, ProdutoFabricante, ProdutoGG } from './types';
@@ -28,6 +28,7 @@ function getLocal<T>(key: string, fallback: T): T {
   try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 function setLocal<T>(key: string, value: T) { localStorage.setItem(key, JSON.stringify(value)); }
+function ordenarHistorico(rows:HistoricoComparacao[]){return rows.sort((a,b)=>b.dataHora.localeCompare(a.dataHora));}
 
 function exigirFirebase(){
   if(!firebaseEnabled || !db) throw new Error('A base compartilhada do Firebase está indisponível. Nenhuma alteração foi salva.');
@@ -60,9 +61,21 @@ export async function listarCorrespondencias(): Promise<Correspondencia[]> {
 }
 
 export async function listarHistorico(): Promise<HistoricoComparacao[]> {
-  if(!firebaseEnabled||!db) return getLocal(KEYS.historico,[] as HistoricoComparacao[]).sort((a,b)=>b.dataHora.localeCompare(a.dataHora));
+  if(!firebaseEnabled||!db) return ordenarHistorico(getLocal(KEYS.historico,[] as HistoricoComparacao[]));
   const snap=await getDocs(collection(db,'historico_comparacoes'));
-  return snap.docs.map(d=>d.data() as HistoricoComparacao).sort((a,b)=>b.dataHora.localeCompare(a.dataHora));
+  return ordenarHistorico(snap.docs.map(d=>d.data() as HistoricoComparacao));
+}
+
+export function assinarHistorico(onChange:(rows:HistoricoComparacao[])=>void,onError?:(error:Error)=>void){
+  if(!firebaseEnabled||!db){
+    onChange(ordenarHistorico(getLocal(KEYS.historico,[] as HistoricoComparacao[])));
+    return ()=>undefined;
+  }
+  return onSnapshot(collection(db,'historico_comparacoes'),snap=>{
+    const rows=ordenarHistorico(snap.docs.map(d=>d.data() as HistoricoComparacao));
+    setLocal(KEYS.historico,rows.slice(0,5000));
+    onChange(rows);
+  },error=>onError?.(error));
 }
 
 export async function salvarFabricantes(rows: ProdutoFabricante[], substituir = false) {
@@ -91,7 +104,7 @@ export async function salvarCorrespondencia(item: Correspondencia) {
 }
 
 export async function salvarHistorico(item: HistoricoComparacao) {
-  if(!firebaseEnabled||!db){const atual=getLocal(KEYS.historico,[] as HistoricoComparacao[]);const map=new Map(atual.map(x=>[x.id,x]));map.set(item.id,item);setLocal(KEYS.historico,[...map.values()].sort((a,b)=>b.dataHora.localeCompare(a.dataHora)).slice(0,5000));return;}
+  if(!firebaseEnabled||!db){const atual=getLocal(KEYS.historico,[] as HistoricoComparacao[]);const map=new Map(atual.map(x=>[x.id,x]));map.set(item.id,item);setLocal(KEYS.historico,ordenarHistorico([...map.values()]).slice(0,5000));return;}
   exigirFirebase();
   await setDoc(doc(db,'historico_comparacoes',item.id),item);
 }
