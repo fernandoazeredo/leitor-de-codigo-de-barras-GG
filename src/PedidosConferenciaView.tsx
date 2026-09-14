@@ -1,1 +1,0 @@
-export { ConferenciaPedidos } from './ConferenciaPedidos';
