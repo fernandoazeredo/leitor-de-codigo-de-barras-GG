@@ -44,7 +44,7 @@ export type Correspondencia = {
 
 export type HistoricoComparacao = {
   id: string;
-  tipo: 'VINCULO_CRIADO' | 'CONSULTA_EXISTENTE';
+  tipo: 'VINCULO_CRIADO' | 'CONSULTA_EXISTENTE' | 'COMPARACAO_PENDENTE';
   dataHora: string;
   codigoPesquisado: string;
   codigoFabricante: string;
