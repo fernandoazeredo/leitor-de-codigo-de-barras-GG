@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase';
-import type { PedidoConferencia } from './conferenciaPedidos';
+import type { PedidoConferencia } from './conferenciaPedidosModel';
 
 const KEY='gg_pedidos_conferencia_v1';
 
