@@ -22,6 +22,7 @@ export type ItemPedido = {
 
 export type AutorizacaoDivergencia = {
   selfie:string;
+  justificativa?:string; // opcional apenas para compatibilidade com registros antigos
   dataHora:string;
 };
 
