@@ -5,7 +5,7 @@ import { melhoresCandidatos } from './matching';
 import { identificarProdutoExterno } from './produtoExterno';
 import type { ProdutoFabricante, ProdutoGG } from './types';
 import { listarPedidosConferencia, salvarPedidoConferencia } from './pedidosData';
-import { parseNFeXml, recalcularStatus, situacaoItem, temDivergenciaReal, type DivergenciaConferencia, type PedidoConferencia } from './conferenciaPedidos';
+import { parseNFeXml, recalcularStatus, situacaoItem, temDivergenciaReal, type DivergenciaConferencia, type PedidoConferencia } from './conferenciaPedidosModel';
 
 function normalizarCodigo(v?:string){return String(v??'').trim().replace(/\D/g,'');}
 const novaDivergencia=(tipo:DivergenciaConferencia['tipo'],descricao:string,codigo?:string):DivergenciaConferencia=>({id:`${tipo}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,tipo,descricao,codigo,dataHora:new Date().toISOString()});
