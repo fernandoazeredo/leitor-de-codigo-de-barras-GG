@@ -10,6 +10,18 @@ function getLocal():PedidoConferencia[]{
 function setLocal(rows:PedidoConferencia[]){localStorage.setItem(KEY,JSON.stringify(rows));}
 function ordenar(rows:PedidoConferencia[]){return rows.sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));}
 
+function semUndefined<T>(valor:T):T{
+  if(Array.isArray(valor)) return valor.map(item=>semUndefined(item)) as T;
+  if(valor && typeof valor==='object'){
+    return Object.fromEntries(
+      Object.entries(valor as Record<string,unknown>)
+        .filter(([,v])=>v!==undefined)
+        .map(([k,v])=>[k,semUndefined(v)])
+    ) as T;
+  }
+  return valor;
+}
+
 export async function listarPedidosConferencia():Promise<PedidoConferencia[]>{
   if(!firebaseEnabled||!db) return getLocal();
   const snap=await getDocs(collection(db,'pedidos_conferencia'));
@@ -38,7 +50,7 @@ export async function salvarPedidoConferencia(item:PedidoConferencia){
     setLocal(ordenar([...map.values()]));
     return;
   }
-  await setDoc(doc(db,'pedidos_conferencia',item.id),item);
+  await setDoc(doc(db,'pedidos_conferencia',item.id),semUndefined(item));
 }
 
 export async function excluirPedidoConferencia(id:string){
