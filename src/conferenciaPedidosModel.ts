@@ -34,6 +34,7 @@ export type ItemPedido = {
 
 export type AutorizacaoDivergencia = {
   selfie:string;
+  justificativa?:string;
   dataHora:string;
 };
 
