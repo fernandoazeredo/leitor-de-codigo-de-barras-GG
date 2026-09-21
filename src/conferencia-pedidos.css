@@ -29,3 +29,16 @@
 .orders-module .search:has(.quantity-input) input:not(.quantity-input){width:100%;min-width:0;box-sizing:border-box}
 @media(max-width:760px){.orders-module .search:has(.quantity-input){grid-template-columns:80px 150px minmax(0,1fr)}.orders-module .search:has(.quantity-input) .primary{grid-column:1/-1;width:100%}}
 @media(max-width:520px){.orders-module .search:has(.quantity-input){grid-template-columns:76px minmax(140px,.8fr) minmax(150px,1.2fr);overflow-x:auto}}
+
+
+/* Tema escuro: garante contraste e legibilidade no seletor de Unidade */
+:root[data-theme='dark'] .orders-module .search .unit-select{
+  background:#151d19;
+  color:#fff;
+  border-color:#3a4941;
+  color-scheme:dark;
+}
+:root[data-theme='dark'] .orders-module .search .unit-select option{
+  background:#151d19;
+  color:#fff;
+}
