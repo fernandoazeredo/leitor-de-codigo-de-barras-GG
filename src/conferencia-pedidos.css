@@ -21,3 +21,11 @@
 @media(max-width:760px){.batch-scan{grid-template-columns:1fr}.batch-confirm{width:100%}.authorization-photo-label{width:100%;justify-content:center}.authorization-card{padding:14px}}
 
 .search .quantity-input,.search .unit-select{border-radius:12px!important;min-height:46px;padding:10px 14px;border:1px solid #c7d4ce;background:var(--card,#fff);font:inherit}.search .unit-select{cursor:pointer}.auth-camera-box{width:100%;padding:10px;border:1px solid #cfd9d4;border-radius:12px;background:#0f1713;box-sizing:border-box}.auth-camera-box video{display:block;width:100%;max-height:320px;object-fit:cover;border-radius:10px;background:#000}.auth-camera-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}@media(max-width:760px){.search .quantity-input,.search .unit-select{width:100%}}
+
+/* Proporcao dos campos da linha de conferencia */
+.orders-module .search:has(.quantity-input){display:grid;grid-template-columns:90px 170px minmax(220px,1fr) auto;gap:8px;align-items:stretch}
+.orders-module .search:has(.quantity-input) .quantity-input,
+.orders-module .search:has(.quantity-input) .unit-select,
+.orders-module .search:has(.quantity-input) input:not(.quantity-input){width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:760px){.orders-module .search:has(.quantity-input){grid-template-columns:80px 150px minmax(0,1fr)}.orders-module .search:has(.quantity-input) .primary{grid-column:1/-1;width:100%}}
+@media(max-width:520px){.orders-module .search:has(.quantity-input){grid-template-columns:76px minmax(140px,.8fr) minmax(150px,1.2fr);overflow-x:auto}}
