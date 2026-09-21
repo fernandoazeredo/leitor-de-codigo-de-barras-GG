@@ -33,10 +33,10 @@ export const UNIDADES:UnidadeMedida[]=[
 export function obterFator(sigla:string,produtoId:string,relacoes:ProdutoUnidade[]):number{
   const unidade=UNIDADES.find(u=>u.sigla===sigla);
   if(!unidade)throw new Error(`Unidade desconhecida: ${sigla}`);
-  if(unidade.fatorFixo!==null)return unidade.fatorFixo;
   const relacao=relacoes.find(r=>r.produtoId===produtoId&&r.unidade===sigla);
-  if(!relacao)throw new Error(`Produto sem fator cadastrado para ${sigla}`);
-  return relacao.fatorConversao;
+  if(relacao)return relacao.fatorConversao;
+  if(unidade.fatorFixo!==null)return unidade.fatorFixo;
+  throw new Error(`Produto sem fator cadastrado para ${sigla}`);
 }
 export function unidadesDoProduto(produtoId:string,relacoes:ProdutoUnidade[]):UnidadeMedida[]{
   const siglas=new Set(relacoes.filter(r=>r.produtoId===produtoId).map(r=>r.unidade));
