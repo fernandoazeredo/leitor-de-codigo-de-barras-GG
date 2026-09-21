@@ -10,6 +10,15 @@ export type DivergenciaConferencia = {
   dataHora:string;
 };
 
+export type MovimentoItemConferencia = {
+  codigo:string;
+  quantidade:number;
+  unidade:string;
+  fatorUsado:number;
+  quantidadeUN:number;
+  dataHora:string;
+};
+
 export type ItemPedido = {
   id:string;
   codigoProduto?:string;
@@ -17,7 +26,10 @@ export type ItemPedido = {
   descricao:string;
   unidade?:string;
   quantidade:number;
+  chaveProduto:string;
+  fatorNF?:number;
   conferido:number;
+  movimentos?:MovimentoItemConferencia[];
 };
 
 export type AutorizacaoDivergencia = {
@@ -44,6 +56,7 @@ export type PedidoConferencia = {
 
 const numero = (v?:string) => Number(String(v ?? '0').replace(',','.')) || 0;
 const texto = (el:Element, tag:string) => el.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
+const normalizarUnidadeNF=(v:string)=>{const u=v.trim().toUpperCase();return ['UN','UNID','UND','PC'].includes(u)?'UN':u;};
 
 export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
   const doc=new DOMParser().parseFromString(xml,'application/xml');
@@ -58,13 +71,18 @@ export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
   const itens=[...inf.getElementsByTagName('det')].map((det,index)=>{
     const prod=det.getElementsByTagName('prod')[0];
     const ean=prod?(texto(prod,'cEAN')||texto(prod,'cEANTrib')):'';
+    const codigoProduto=prod?texto(prod,'cProd'):'';
+    const eanValido=ean && !/SEM GTIN/i.test(ean)?ean:'';
+    const unidade=prod?normalizarUnidadeNF(texto(prod,'uCom')):'';
     return {
       id:det.getAttribute('nItem')||String(index+1),
-      codigoProduto:prod?texto(prod,'cProd'):undefined,
-      ean:ean && !/SEM GTIN/i.test(ean)?ean:undefined,
+      codigoProduto:codigoProduto||undefined,
+      ean:eanValido||undefined,
       descricao:prod?texto(prod,'xProd'):`Item ${index+1}`,
-      unidade:prod?texto(prod,'uCom'):undefined,
+      unidade:unidade||undefined,
       quantidade:prod?numero(texto(prod,'qCom')):0,
+      chaveProduto:eanValido||codigoProduto||`NF-${numeroNF||'SEM'}-ITEM-${det.getAttribute('nItem')||String(index+1)}`,
+      fatorNF:!unidade||unidade.toUpperCase()==='UN'?1:undefined,
       conferido:0
     } satisfies ItemPedido;
   });
@@ -82,20 +100,23 @@ export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
   };
 }
 
+export function quantidadePrevistaUN(item:ItemPedido){return item.quantidade*(item.fatorNF??1);}
+
 export function situacaoItem(item:ItemPedido){
-  if(item.conferido===item.quantidade) return 'OK' as const;
-  if(item.conferido<item.quantidade) return 'FALTANDO' as const;
+  const previsto=quantidadePrevistaUN(item);
+  if(item.conferido===previsto) return 'OK' as const;
+  if(item.conferido<previsto) return 'FALTANDO' as const;
   return 'EXCEDENTE' as const;
 }
 
 export function temDivergenciaReal(pedido:PedidoConferencia){
-  return Boolean((pedido.divergencias?.length||0)>0 || pedido.itens.some(i=>i.conferido>i.quantidade) || (pedido.conferenciaFinalizada && pedido.itens.some(i=>i.conferido<i.quantidade)));
+  return Boolean((pedido.divergencias?.length||0)>0 || pedido.itens.some(i=>i.conferido>quantidadePrevistaUN(i)) || (pedido.conferenciaFinalizada && pedido.itens.some(i=>i.conferido<quantidadePrevistaUN(i))));
 }
 
 export function recalcularStatus(pedido:PedidoConferencia):StatusConferencia{
   if(pedido.autorizacao) return 'LIBERADO_AUTORIZACAO';
   if(temDivergenciaReal(pedido)) return 'DIVERGENCIA';
-  if(pedido.itens.every(i=>i.conferido===i.quantidade)) return 'CONFERIDO';
+  if(pedido.itens.every(i=>i.conferido===quantidadePrevistaUN(i))) return 'CONFERIDO';
   if(pedido.itens.some(i=>i.conferido>0)) return 'EM_CONFERENCIA';
   return 'AGUARDANDO';
 }
