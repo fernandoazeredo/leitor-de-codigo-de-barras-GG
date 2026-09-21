@@ -56,6 +56,7 @@ export type PedidoConferencia = {
 
 const numero = (v?:string) => Number(String(v ?? '0').replace(',','.')) || 0;
 const texto = (el:Element, tag:string) => el.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
+const normalizarUnidadeNF=(v:string)=>{const u=v.trim().toUpperCase();return ['UN','UNID','UND','PC'].includes(u)?'UN':u;};
 
 export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
   const doc=new DOMParser().parseFromString(xml,'application/xml');
@@ -72,7 +73,7 @@ export function parseNFeXml(xml:string,arquivoNome:string):PedidoConferencia{
     const ean=prod?(texto(prod,'cEAN')||texto(prod,'cEANTrib')):'';
     const codigoProduto=prod?texto(prod,'cProd'):'';
     const eanValido=ean && !/SEM GTIN/i.test(ean)?ean:'';
-    const unidade=prod?texto(prod,'uCom'):'';
+    const unidade=prod?normalizarUnidadeNF(texto(prod,'uCom')):'';
     return {
       id:det.getAttribute('nItem')||String(index+1),
       codigoProduto:codigoProduto||undefined,
