@@ -21,7 +21,8 @@ async function compactarSelfie(file:File):Promise<string>{
 
 export function ConferenciaPedidos(){
   const xmlInputRef=useRef<HTMLInputElement>(null);
-  const [pedidos,setPedidos]=useState<PedidoConferencia[]>([]),[aberto,setAberto]=useState<string|null>(null),[scanning,setScanning]=useState(false),[mensagem,setMensagem]=useState(''),[codigo,setCodigo]=useState(''),[quantidade,setQuantidade]=useState('1'),[unidade,setUnidade]=useState('UN'),[produtoSelecionado,setProdutoSelecionado]=useState<string|null>(null),[selfie,setSelfie]=useState(''),[justificativa,setJustificativa]=useState(''),[arrastando,setArrastando]=useState(false),[carregando,setCarregando]=useState(true),[fatores,setFatores]=useState<FatorProduto[]>([]),[novaUnidade,setNovaUnidade]=useState('FD'),[novoFator,setNovoFator]=useState(1),[pedindoFator,setPedindoFator]=useState(false),[authCameraOpen,setAuthCameraOpen]=useState(false);\n  const authVideoRef=useRef<HTMLVideoElement|null>(null),authStreamRef=useRef<MediaStream|null>(null);
+  const [pedidos,setPedidos]=useState<PedidoConferencia[]>([]),[aberto,setAberto]=useState<string|null>(null),[scanning,setScanning]=useState(false),[mensagem,setMensagem]=useState(''),[codigo,setCodigo]=useState(''),[quantidade,setQuantidade]=useState('1'),[unidade,setUnidade]=useState('UN'),[produtoSelecionado,setProdutoSelecionado]=useState<string|null>(null),[selfie,setSelfie]=useState(''),[justificativa,setJustificativa]=useState(''),[arrastando,setArrastando]=useState(false),[carregando,setCarregando]=useState(true),[fatores,setFatores]=useState<FatorProduto[]>([]),[novaUnidade,setNovaUnidade]=useState('FD'),[novoFator,setNovoFator]=useState(1),[pedindoFator,setPedindoFator]=useState(false),[authCameraOpen,setAuthCameraOpen]=useState(false);
+  const authVideoRef=useRef<HTMLVideoElement|null>(null),authStreamRef=useRef<MediaStream|null>(null);
   useEffect(()=>{
     setCarregando(true);
     const cancelar=assinarPedidosConferencia(
@@ -30,7 +31,8 @@ export function ConferenciaPedidos(){
     );
     return cancelar;
   },[]);
-  useEffect(()=>{if(!authCameraOpen)return;void navigator.mediaDevices?.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(stream=>{authStreamRef.current=stream;if(authVideoRef.current){authVideoRef.current.srcObject=stream;void authVideoRef.current.play();}}).catch(()=>{setAuthCameraOpen(false);setMensagem('Não foi possível abrir a câmera para a autorização. Verifique a permissão do navegador.');});return()=>{authStreamRef.current?.getTracks().forEach(t=>t.stop());authStreamRef.current=null;};},[authCameraOpen]);\n  useEffect(()=>assinarFatoresProduto(setFatores,()=>setMensagem('Não foi possível sincronizar a base de unidades.')),[]);
+  useEffect(()=>{if(!authCameraOpen)return;void navigator.mediaDevices?.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(stream=>{authStreamRef.current=stream;if(authVideoRef.current){authVideoRef.current.srcObject=stream;void authVideoRef.current.play();}}).catch(()=>{setAuthCameraOpen(false);setMensagem('Não foi possível abrir a câmera para a autorização. Verifique a permissão do navegador.');});return()=>{authStreamRef.current?.getTracks().forEach(t=>t.stop());authStreamRef.current=null;};},[authCameraOpen]);
+  useEffect(()=>assinarFatoresProduto(setFatores,()=>setMensagem('Não foi possível sincronizar a base de unidades.')),[]);
   const pedido=useMemo(()=>pedidos.find(p=>p.id===aberto)||null,[pedidos,aberto]);
   async function persistOne(item:PedidoConferencia){const novo={...item,status:recalcularStatus(item),atualizadoEm:new Date().toISOString()};setPedidos(atual=>{const map=new Map(atual.map(x=>[x.id,x]));map.set(novo.id,novo);return [...map.values()].sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));});await salvarPedidoConferencia(novo);}
   async function excluirPedido(item:PedidoConferencia){
