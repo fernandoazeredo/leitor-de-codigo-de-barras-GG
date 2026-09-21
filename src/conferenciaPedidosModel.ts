@@ -10,6 +10,15 @@ export type DivergenciaConferencia = {
   dataHora:string;
 };
 
+export type MovimentoItemConferencia = {
+  codigo:string;
+  quantidade:number;
+  unidade:string;
+  fatorUsado:number;
+  quantidadeUN:number;
+  dataHora:string;
+};
+
 export type ItemPedido = {
   id:string;
   codigoProduto?:string;
@@ -18,6 +27,7 @@ export type ItemPedido = {
   unidade?:string;
   quantidade:number;
   conferido:number;
+  movimentos?:MovimentoItemConferencia[];
 };
 
 export type AutorizacaoDivergencia = {
