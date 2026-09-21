@@ -42,3 +42,12 @@
   background:#151d19;
   color:#fff;
 }
+
+/* Tema escuro: preserva a leitura do resumo de progresso acima da quantidade */
+:root[data-theme='dark'] .orders-module .progress-line{
+  background:#24312b;
+  color:#edf5f1;
+}
+:root[data-theme='dark'] .orders-module .progress-line b{
+  color:#fff;
+}
